@@ -17,12 +17,19 @@ export class MessageView {
         wrapper.className = `message-row ${role}`;
         wrapper.id = id;
         const avatar = role === 'ai' ? '<div class="avatar-mark"></div>' : 'U';
+        const roleLabel = role === 'ai' ? 'Assistant' : 'You';
         wrapper.innerHTML = `
             <div class="message-inner">
                 <div class="message-avatar ${role}">
                     ${avatar}
                 </div>
-                <div class="message-body prose">${this.formatContent(content)}</div>
+                <div class="message-body">
+                    <div class="message-header">
+                        <span class="role-pill ${role}">${roleLabel}</span>
+                        <span class="message-divider"></span>
+                    </div>
+                    <div class="message-content prose">${this.formatContent(content)}</div>
+                </div>
             </div>
         `;
         this.listEl.appendChild(wrapper);
@@ -33,18 +40,18 @@ export class MessageView {
         const msgRow = document.getElementById(id);
         if (!msgRow) return;
 
-        const body = msgRow.querySelector('.message-body');
-        if (!body) return;
+        const contentEl = msgRow.querySelector('.message-content');
+        if (!contentEl) return;
 
         const parsed = this.parseThinkingContent(fullContent);
         const formatted = this.formatContent(parsed.content);
 
         if (parsed.thinking) {
-            this.renderThinkingBlock(body, parsed.thinking, formatted, false);
+            this.renderThinkingBlock(contentEl, parsed.thinking, formatted, false);
             return;
         }
 
-        body.innerHTML = formatted;
+        contentEl.innerHTML = formatted;
     }
 
     updateMessage(id: string, content: string, isError = false, stats?: string): void {
@@ -52,19 +59,20 @@ export class MessageView {
         if (!msgRow) return;
 
         const body = msgRow.querySelector('.message-body');
-        if (!body) return;
+        const contentEl = msgRow.querySelector('.message-content');
+        if (!body || !contentEl) return;
 
         const parsed = this.parseThinkingContent(content);
         const formatted = this.formatContent(parsed.content);
 
         if (parsed.thinking) {
-            this.renderThinkingBlock(body, parsed.thinking, formatted, true);
+            this.renderThinkingBlock(contentEl, parsed.thinking, formatted, true);
         } else {
-            body.innerHTML = formatted;
+            contentEl.innerHTML = formatted;
         }
 
         if (isError) {
-            body.classList.add('text-red-500');
+            contentEl.classList.add('text-red-500');
         }
 
         if (stats && msgRow.classList.contains('ai')) {
@@ -108,15 +116,15 @@ export class MessageView {
     }
 
     private renderThinkingBlock(
-        body: Element,
+        contentEl: Element,
         thinkingText: string,
         formattedContent: string,
         preserveOpenState: boolean
     ) {
-        const existing = body.querySelector('.thinking-process') as HTMLDetailsElement | null;
+        const existing = contentEl.querySelector('.thinking-process') as HTMLDetailsElement | null;
         const wasOpen = preserveOpenState ? existing?.hasAttribute('open') ?? false : false;
 
-        body.innerHTML = `
+        contentEl.innerHTML = `
             <div class="thinking-wrapper">
                 <details class="thinking-process">
                     <summary>
@@ -129,7 +137,7 @@ export class MessageView {
             </div>
         `;
 
-        const details = body.querySelector('.thinking-process') as HTMLDetailsElement | null;
+        const details = contentEl.querySelector('.thinking-process') as HTMLDetailsElement | null;
         if (details && wasOpen) {
             details.setAttribute('open', '');
         }

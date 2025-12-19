@@ -30,6 +30,7 @@ async function init() {
     store.subscribe((state) => {
         ui.updateStreamToggle(state.isStreamEnabled);
         ui.updateProviderDisplay();
+        ui.setGenerating(state.isGenerating);
         ui.renderHistoryList(state.conversations, state.activeConversationId);
     });
 
@@ -44,6 +45,8 @@ function setupCallbacks() {
         onNewChat: resetChat,
         onSettingsSave: handleSettingsSave,
         onStreamToggle: toggleStream,
+        onStopGeneration: handleStop,
+        onPromptLibrary: () => ui.focusInput(),
         onConversationSelect: switchConversation,
         onConversationDelete: deleteConversation,
         onConversationRename: renameConversation,
@@ -97,12 +100,14 @@ function initializeAgent() {
     });
 
     console.log('[Demo] Agent initialized with provider:', providerConfig.type);
+    store.setState({ lastLatencyMs: null, lastTokenCount: null });
 }
 
 function updateUIFromState() {
     const state = store.getState();
     ui.updateProviderDisplay();
     ui.updateStreamToggle(state.isStreamEnabled);
+    ui.setGenerating(state.isGenerating);
 }
 
 // ============================================================================
@@ -134,19 +139,56 @@ async function handleSend(text: string) {
             },
         });
 
-        const totalTokens = result.usage?.totalTokens || 0;
-        const duration = result.duration / 1000;
-        const tps = duration > 0 ? (totalTokens / duration).toFixed(1) : '0.0';
+        const totalTokens = result.usage?.totalTokens ?? null;
+        const durationSeconds = result.duration / 1000;
+        const tps = totalTokens !== null && durationSeconds > 0
+            ? (totalTokens / durationSeconds).toFixed(1)
+            : null;
         const modeStr = result.mode === 'agent' ? '🤖 Agent' : '💬 Chat';
-        const statsStr = `${modeStr} • ${totalTokens} tokens • ${duration.toFixed(2)}s • ${tps} t/s`;
+        const statsParts = [
+            result.aborted ? 'Stopped' : modeStr,
+            typeof totalTokens === 'number' ? `${totalTokens} tokens` : null,
+            `${durationSeconds.toFixed(2)}s`,
+            tps ? `${tps} t/s` : null,
+        ].filter(Boolean);
 
-        ui.updateMessage(aiMsgId, result.content, false, statsStr);
+        const statsStr = statsParts.join(' • ');
+        const finalContent = result.aborted ? (fullContent || 'Generation stopped.') : result.content;
+
+        if (result.aborted) {
+            const updatedHistory = agent.getHistory();
+            const lastMsg = updatedHistory[updatedHistory.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+                lastMsg.content = finalContent;
+                agent.setHistory(updatedHistory);
+            }
+        }
+
+        ui.updateMessage(aiMsgId, finalContent, false, statsStr || undefined);
+        store.setState({
+            lastLatencyMs: result.duration,
+            lastTokenCount: totalTokens,
+        });
 
         // Save to history
         updateHistory();
     } catch (error) {
         console.error('[Demo] Error:', error);
         ui.updateMessage(aiMsgId, `**Error:** ${error instanceof Error ? error.message : String(error)}`, true);
+    } finally {
+        store.setState({ isGenerating: false });
+        ui.enableInput();
+    }
+}
+
+function handleStop() {
+    const state = store.getState();
+    if (!state.isGenerating) return;
+
+    try {
+        agent.getAbortController().abort('User stopped generation');
+    } catch (error) {
+        console.warn('[Demo] Abort failed:', error);
     } finally {
         store.setState({ isGenerating: false });
         ui.enableInput();
@@ -188,7 +230,7 @@ function updateHistory() {
 function resetChat() {
     ui.clearMessages();
     agent.clearHistory();
-    store.setState({ activeConversationId: null });
+    store.setState({ activeConversationId: null, lastLatencyMs: null, lastTokenCount: null });
     ui.focusInput();
 }
 

@@ -117,6 +117,16 @@
     margin-bottom: 16px;
 }
 
+.debug-empty {
+    padding: 14px;
+    text-align: center;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
 .debug-section-header {
     display: flex;
     align-items: center;
@@ -154,6 +164,17 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
+}
+
+.event-badge {
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .debug-item-title {
@@ -279,4 +300,3 @@
 .link-btn:hover {
     color: var(--color-accent);
 }
-

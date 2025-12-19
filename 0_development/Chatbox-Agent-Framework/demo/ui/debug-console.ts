@@ -5,12 +5,22 @@ interface DebugConsoleOptions {
     eventsContainer: HTMLElement;
     filterButtons: NodeListOf<Element>;
     searchInput: HTMLInputElement;
+    stepsEmpty?: HTMLElement | null;
+    eventsEmpty?: HTMLElement | null;
+    onCountsChange?: (counts: DebugCounts) => void;
+}
+
+export interface DebugCounts {
+    all: number;
+    step: number;
+    event: number;
+    error: number;
 }
 
 export class DebugConsole {
     private activeFilter: DebugFilter = 'all';
     private searchQuery = '';
-    private counts = { all: 0, step: 0, event: 0, error: 0 };
+    private counts: DebugCounts = { all: 0, step: 0, event: 0, error: 0 };
 
     constructor(private readonly options: DebugConsoleOptions) {
         this.options.filterButtons.forEach(btn => {
@@ -27,6 +37,8 @@ export class DebugConsole {
             this.searchQuery = this.options.searchInput.value.toLowerCase();
             this.applyFilter();
         });
+
+        this.updateEmptyStates();
     }
 
     addStep(nodeId: string, status: string, data?: any): void {
@@ -61,6 +73,7 @@ export class DebugConsole {
         this.options.stepsList.scrollTop = this.options.stepsList.scrollHeight;
         this.updateCounts();
         this.applyFilter();
+        this.updateEmptyStates();
     }
 
     updateStep(nodeId: string, result: any): void {
@@ -111,11 +124,13 @@ export class DebugConsole {
 
         this.updateCounts();
         this.applyFilter();
+        this.updateEmptyStates();
     }
 
     addEvent(event: any): void {
         const div = document.createElement('div');
         const eventType = this.getEventType(event);
+        const summaryText = typeof event.summary === 'string' ? event.summary : this.formatMetrics(event);
 
         div.className = `debug-event type-${eventType}`;
         div.dataset.filter = 'event';
@@ -129,7 +144,7 @@ export class DebugConsole {
                 <button class="detail-toggle">JSON</button>
             </div>
             <div class="debug-item-detail hidden">
-                ${event.summary ? `<div class="event-summary">${event.summary}</div>` : ''}
+                ${summaryText ? `<div class="event-summary">${summaryText}</div>` : ''}
                 <pre>${this.formatData(event)}</pre>
             </div>
         `;
@@ -144,6 +159,7 @@ export class DebugConsole {
         this.options.eventsContainer.scrollTop = this.options.eventsContainer.scrollHeight;
         this.updateCounts();
         this.applyFilter();
+        this.updateEmptyStates();
     }
 
     clear(): void {
@@ -151,6 +167,11 @@ export class DebugConsole {
         this.options.eventsContainer.innerHTML = '';
         this.counts = { all: 0, step: 0, event: 0, error: 0 };
         this.updateCounts();
+        this.updateEmptyStates();
+    }
+
+    getCounts(): DebugCounts {
+        return { ...this.counts };
     }
 
     exportLogs(): void {
@@ -201,6 +222,7 @@ export class DebugConsole {
         this.counts.event = this.options.eventsContainer.children.length;
         this.counts.all = this.counts.step + this.counts.event;
         this.counts.error = document.querySelectorAll('.debug-drawer [data-type="error"]').length;
+        this.notifyCountsChange();
 
         this.options.filterButtons.forEach(btn => {
             const filter = (btn as HTMLElement).dataset.filter as keyof typeof this.counts;
@@ -209,6 +231,19 @@ export class DebugConsole {
                 countEl.textContent = String(this.counts[filter]);
             }
         });
+    }
+
+    private updateEmptyStates(): void {
+        if (this.options.stepsEmpty) {
+            this.options.stepsEmpty.classList.toggle('hidden', this.counts.step > 0);
+        }
+        if (this.options.eventsEmpty) {
+            this.options.eventsEmpty.classList.toggle('hidden', this.counts.event > 0);
+        }
+    }
+
+    private notifyCountsChange(): void {
+        this.options.onCountsChange?.({ ...this.counts });
     }
 
     private getEventType(event: any): 'error' | 'success' | 'info' | 'warning' {
@@ -234,5 +269,17 @@ export class DebugConsole {
         } catch (e) {
             return String(data);
         }
+    }
+
+    private formatMetrics(event: any): string | null {
+        const parts: string[] = [];
+        if (typeof event.duration === 'number') {
+            parts.push(`${(event.duration / 1000).toFixed(2)}s`);
+        }
+        const totalTokens = event.usage?.totalTokens ?? event.totalTokens;
+        if (typeof totalTokens === 'number') {
+            parts.push(`${totalTokens.toLocaleString()} tokens`);
+        }
+        return parts.length ? parts.join(' • ') : null;
     }
 }

@@ -12,6 +12,8 @@ export interface DemoState {
     settings: LLMSettings;
     selectedProvider: LLMProvider;
     isStreamEnabled: boolean;
+    lastLatencyMs: number | null;
+    lastTokenCount: number | null;
     conversations: Conversation[];
     activeConversationId: string | null;
     isInitialized: boolean;
@@ -29,6 +31,8 @@ class StateStore {
             settings: loadSettings(),
             selectedProvider: 'lm-studio',
             isStreamEnabled: true,
+            lastLatencyMs: null,
+            lastTokenCount: null,
             conversations: [],
             activeConversationId: null,
             isInitialized: false,
