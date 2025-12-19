@@ -15,7 +15,8 @@ import { VerifierNode } from '../nodes/verifier';
 import { ResponderNode } from '../nodes/responder';
 import { LLMResponderNode } from '../nodes/llm-responder';
 import { shouldUseAgentMode, formatAgentResponse } from './agent-utils';
-import type { State, Tool, GraphDefinition, RunnerHooks } from './types';
+import { AgentAbortController, isAbortError, type ResumeOptions } from './abort-controller';
+import type { State, Tool, GraphDefinition, RunnerHooks, Checkpoint } from './types';
 
 // ============================================================================
 // 类型定义
@@ -48,6 +49,10 @@ export interface AgentResult {
     mode: 'chat' | 'agent';
     steps?: Array<{ description: string; status: string; result?: unknown }>;
     duration: number;
+    /** 是否被中断 */
+    aborted?: boolean;
+    /** 中断原因 */
+    abortReason?: string;
 }
 
 // ============================================================================
@@ -59,6 +64,9 @@ export class Agent {
     private toolRegistry: ToolRegistry;
     private runner: GraphRunner | null = null;
     private eventStream: EventStream | null = null;
+    private abortController: AgentAbortController;
+    private isRunning: boolean = false;
+    private lastState: State | null = null;
     private config: {
         provider: ProviderConfigInput;
         tools: Tool[];
@@ -85,6 +93,7 @@ export class Agent {
 
         this.provider = this.createProvider(this.config.provider);
         this.toolRegistry = new ToolRegistry();
+        this.abortController = new AgentAbortController();
         this.config.tools.forEach(tool => this.toolRegistry.register(tool));
         this.initializeRunner();
     }
@@ -124,15 +133,36 @@ export class Agent {
 
     /** 主入口：发送消息并获取回复 */
     async chat(message: string, options: ChatOptions = {}): Promise<AgentResult> {
+        if (this.isRunning) {
+            throw new Error('Agent is already running. Call abort() first.');
+        }
+
+        this.isRunning = true;
+        this.abortController.reset();
         const startTime = Date.now();
         const mode = this.determineMode(message);
 
         this.conversationHistory.push({ role: 'user', content: message });
 
-        if (mode === 'chat') {
-            return this.handleChatMode(message, options, startTime);
+        try {
+            if (mode === 'chat') {
+                return await this.handleChatMode(message, options, startTime);
+            }
+            return await this.handleAgentMode(message, startTime);
+        } catch (error) {
+            if (isAbortError(error)) {
+                return {
+                    content: '[任务已中断]',
+                    mode,
+                    duration: Date.now() - startTime,
+                    aborted: true,
+                    abortReason: this.abortController.getAbortState().reason,
+                };
+            }
+            throw error;
+        } finally {
+            this.isRunning = false;
         }
-        return this.handleAgentMode(message, startTime);
     }
 
     private determineMode(message: string): 'chat' | 'agent' {
@@ -191,8 +221,12 @@ export class Agent {
             permissions: { 'sql:read': true, 'document:read': true },
         });
 
-        const result = await this.runner.execute(initialState);
+        // 使用 AbortController 包装执行
+        const result = await this.abortController.wrapWithAbort(
+            this.runner.execute(initialState)
+        );
         const finalState = result.state;
+        this.lastState = finalState;
 
         const lastMessage = finalState.conversation.messages.filter(m => m.role === 'assistant').pop();
         const content = lastMessage?.content || formatAgentResponse(
@@ -225,6 +259,130 @@ export class Agent {
     registerTool(tool: Tool): void { this.toolRegistry.register(tool); }
     clearHistory(): void { this.conversationHistory = []; }
     setHistory(history: ChatMessage[]): void { this.conversationHistory = [...history]; }
+
+    // ========================================================================
+    // Abort/Resume API
+    // ========================================================================
+
+    /**
+     * 中断当前执行
+     * @param reason 中断原因
+     */
+    abort(reason?: string): void {
+        if (!this.isRunning) {
+            console.warn('Agent is not running, nothing to abort.');
+            return;
+        }
+        this.abortController.abort(reason);
+        this.eventStream?.emit('abort', 'warning', reason || 'User initiated abort');
+    }
+
+    /**
+     * 从最近的 checkpoint 恢复执行
+     * @param options 恢复选项
+     */
+    async resume(options: ResumeOptions = {}): Promise<AgentResult> {
+        if (this.isRunning) {
+            throw new Error('Agent is already running.');
+        }
+
+        const checkpointId = options.fromCheckpoint;
+        let resumeState: State | null = null;
+
+        if (checkpointId) {
+            const checkpoint = this.abortController.getCheckpoint(checkpointId);
+            if (!checkpoint) {
+                throw new Error(`Checkpoint "${checkpointId}" not found.`);
+            }
+            resumeState = checkpoint.state;
+        } else {
+            // 使用最近一次保存的状态
+            const latestCheckpoint = this.abortController.getLatestCheckpoint();
+            resumeState = latestCheckpoint?.state || this.lastState;
+        }
+
+        if (!resumeState) {
+            throw new Error('No state available to resume from.');
+        }
+
+        // 应用修改（如果有）
+        if (options.modifiedState) {
+            resumeState = {
+                ...resumeState,
+                ...options.modifiedState,
+                updatedAt: Date.now(),
+            };
+        }
+
+        this.isRunning = true;
+        this.abortController.reset();
+        const startTime = Date.now();
+
+        try {
+            if (!this.runner) throw new Error('GraphRunner not initialized');
+
+            this.eventStream?.emit('resume', 'info', 'Resuming from checkpoint');
+
+            const result = await this.runner.execute(resumeState);
+            const finalState = result.state;
+            this.lastState = finalState;
+
+            const lastMessage = finalState.conversation.messages
+                .filter(m => m.role === 'assistant').pop();
+            const content = lastMessage?.content || formatAgentResponse(
+                finalState.task.goal,
+                finalState.task.steps.map(s => ({ description: s.description, status: s.status }))
+            );
+
+            this.conversationHistory.push({ role: 'assistant', content });
+
+            return {
+                content,
+                mode: 'agent',
+                steps: finalState.task.steps.map(s => ({
+                    description: s.description,
+                    status: s.status,
+                    result: s.result,
+                })),
+                duration: Date.now() - startTime,
+                usage: { promptTokens: 0, completionTokens: 0, totalTokens: finalState.telemetry.tokenCount },
+            };
+        } catch (error) {
+            if (isAbortError(error)) {
+                return {
+                    content: '[任务已中断]',
+                    mode: 'agent',
+                    duration: Date.now() - startTime,
+                    aborted: true,
+                    abortReason: this.abortController.getAbortState().reason,
+                };
+            }
+            throw error;
+        } finally {
+            this.isRunning = false;
+        }
+    }
+
+    /**
+     * 检查 Agent 是否正在运行
+     */
+    isAgentRunning(): boolean {
+        return this.isRunning;
+    }
+
+    /**
+     * 获取 AbortController
+     */
+    getAbortController(): AgentAbortController {
+        return this.abortController;
+    }
+
+    /**
+     * 获取可用的 checkpoints
+     */
+    listCheckpoints(): Checkpoint[] {
+        return this.abortController.listCheckpoints();
+    }
 }
 
 /** 创建 Agent 实例 */

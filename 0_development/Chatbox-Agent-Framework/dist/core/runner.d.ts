@@ -10,6 +10,8 @@ export declare class GraphRunner {
     private hooks?;
     private eventStream;
     private checkpointInterval;
+    private nodeExecutor;
+    private checkpointManager;
     constructor(graph: GraphDefinition, persistence?: PersistenceAdapter | undefined, hooks?: RunnerHooks | undefined, options?: {
         checkpointInterval?: number;
     });
@@ -31,17 +33,5 @@ export declare class GraphRunner {
      * 获取事件流
      */
     getEventStream(): EventStream;
-    /**
-     * 执行单个节点（带错误处理与重试）
-     */
-    private executeNode;
-    /**
-     * 获取下一个节点
-     */
-    private getNextNode;
-    /**
-     * 保存 checkpoint
-     */
-    private saveCheckpoint;
 }
 //# sourceMappingURL=runner.d.ts.map

@@ -30,12 +30,18 @@
     </script>
     <style>
         /* Instant state before CSS loads */
-        .sidebar-will-collapse body {
-            --sidebar-initial: collapsed;
+        /* Desktop: Mimic .sidebar-collapsed state */
+        html.sidebar-will-collapse .sidebar {
+            width: 0 !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            border-right-color: transparent !important;
         }
 
-        .sidebar-will-hide #sidebar {
-            transform: translateX(-100%);
+        /* Mobile: Hidden by default */
+        html.sidebar-will-hide #sidebar {
+            transform: translateX(-100%) !important;
         }
     </style>
 </head>

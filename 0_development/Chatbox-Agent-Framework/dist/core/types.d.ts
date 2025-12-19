@@ -80,7 +80,7 @@ export interface State {
     createdAt: number;
     updatedAt: number;
 }
-export type EventType = 'node_start' | 'node_end' | 'tool_call' | 'tool_result' | 'error' | 'retry' | 'checkpoint' | 'budget_warning' | 'budget_exceeded' | 'stream_chunk';
+export type EventType = 'node_start' | 'node_end' | 'tool_call' | 'tool_result' | 'error' | 'retry' | 'checkpoint' | 'budget_warning' | 'budget_exceeded' | 'stream_chunk' | 'abort' | 'resume';
 export interface Event {
     id: string;
     timestamp: number;

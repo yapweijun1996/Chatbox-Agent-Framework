@@ -68,10 +68,12 @@ export class UIController {
         this.settingsModal = document.getElementById('settings-modal')!;
         this.sidebarOverlay = document.getElementById('sidebar-overlay');
 
-        document.documentElement.classList.remove('sidebar-will-collapse', 'sidebar-will-hide');
 
         this.messageView = new MessageView(this.messagesList);
         this.sidebarManager = new SidebarManager(this.sidebar, this.sidebarOverlay);
+
+        // Remove FOUC prevention classes after sidebar manager has applied the persistent state
+        document.documentElement.classList.remove('sidebar-will-collapse', 'sidebar-will-hide');
         this.chatViewport = new ChatViewport(this.chatContainer, this.scrollBottomBtn);
         this.debugConsole = new DebugConsole({
             stepsList: this.stepsList,

@@ -1,236 +1,356 @@
-# Agent Workflow Framework v0.1
+# Agent Workflow Framework
 
-一个产品级 JS Agent Workflow Framework（类似 LangGraph），提供稳定的 Planning、Tool Orchestration、State Management、Error Recovery 能力。
+[![npm version](https://img.shields.io/npm/v/agent-workflow-framework.svg)](https://www.npmjs.com/package/agent-workflow-framework)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen.svg)](https://github.com/yapweijun1996/Chatbox-Agent-Framework)
 
-## ✨ 核心特性
+一个生产级的 JavaScript/TypeScript AI Agent 工作流框架，提供规划、工具编排、状态管理和错误恢复等核心功能。
 
-- **统一状态管理**：所有数据流经单一 State 容器，可序列化、可恢复
-- **可插拔节点系统**：Planner → ToolRunner → Verifier → Responder 完整闭环
-- **LLM 集成**：支持 LM Studio 本地 LLM（已配置 `zai-org/glm-4.6v-flash`）
-- **工具契约与校验**：使用 Zod 严格校验输入输出，防止契约错误
-- **错误分类与恢复**：自动重试（指数退避）、降级、回滚、预算控制
-- **Checkpoint 持久化**：支持中断恢复，避免重复调用昂贵工具
-- **完整可观测性**：事件流、Debug Bundle 导出、实时进度展示
-- **安全控制**：工具权限、SELECT-only SQL、预算限制
-- **流式响应 (SSE)**：支持实时打字机效果，提升用户体验
+## ✨ 特性
+
+- 🤖 **智能 Agent 系统** - 支持 chat/agent/auto 三种运行模式
+- 🧠 **记忆系统** - 短期/长期记忆管理，支持语义搜索
+- 🔧 **LLM 服务层** - 中间件、缓存、重试、统计等高级功能
+- 🛠️ **工具编排** - 动态工具注册和执行
+- 📊 **状态管理** - 不可变状态、检查点、回滚
+- 🔄 **错误恢复** - 自动重试、降级策略
+- ⏸️ **中断/恢复** - 支持长时间运行的任务
+- 📈 **事件流** - 完整的事件系统和进度追踪
+- 🎯 **TypeScript** - 完整的类型定义
+- ✅ **高测试覆盖** - 236 个测试用例全部通过
+
+## 📦 安装
+
+```bash
+npm install agent-workflow-framework
+```
 
 ## 🚀 快速开始
 
-### 安装依赖
-
-```bash
-npm install
-```
-
-### 配置 LM Studio（可选）
-
-框架已集成 LM Studio 本地 LLM 支持。如需使用：
-
-1. 启动 LM Studio 并加载模型 `zai-org/glm-4.6v-flash`
-2. 确保 API 地址为 `http://127.0.0.1:6354`
-3. 查看 [LM Studio 配置指南](docs/LM_STUDIO_SETUP.md)
-
-### 运行 Demo
-
-```bash
-npm run dev
-```
-
-访问 `http://localhost:5173/demo/demo.html`
-
-### 基础用法（推荐）
+### 基础 Agent 使用
 
 ```typescript
-import { createAgent, getExampleTools } from './src/index';
+import { createAgent, createLLMProvider } from 'agent-workflow-framework';
+
+// 创建 LLM Provider
+const provider = createLLMProvider({
+    type: 'lm-studio',
+    baseURL: 'http://localhost:1234/v1',
+    model: 'qwen2.5-coder-7b-instruct',
+});
 
 // 创建 Agent
 const agent = createAgent({
-  provider: {
-    type: 'lm-studio',
-    baseURL: 'http://127.0.0.1:6354',
-    model: 'zai-org/glm-4.6v-flash',
-  },
-  tools: getExampleTools(),
-  mode: 'auto', // 自动判断使用 chat 或 agent 模式
+    llmProvider: provider,
+    mode: 'chat', // 或 'agent', 'auto'
 });
 
-// 简单对话
-const response = await agent.chat('Hello!');
-console.log(response.content);
-
-// 复杂任务（自动触发 Agent 模式）
-const result = await agent.chat('Query the database for user statistics');
-console.log('Steps:', result.steps);
-console.log('Response:', result.content);
-
-// 流式输出
-await agent.chat('Tell me a story', {
-  stream: true,
-  onStream: (chunk) => process.stdout.write(chunk),
-});
+// 发送消息
+const result = await agent.chat('你好，请帮我分析这段代码');
+console.log(result.response);
 ```
 
-### 高级用法（GraphRunner）
+### 使用记忆系统
 
 ```typescript
-import {
-  createState,
-  GraphRunner,
-  ToolRegistry,
-  LLMPlannerNode,
-  ToolRunnerNode,
-  VerifierNode,
-  ResponderNode,
-  getExampleTools,
-} from './src/index';
+import { createMemoryManager, SimpleTFIDFEmbedding } from 'agent-workflow-framework';
 
-// 1. 注册工具
-const toolRegistry = new ToolRegistry();
-getExampleTools().forEach(tool => toolRegistry.register(tool));
+// 创建记忆管理器
+const memory = createMemoryManager({
+    shortTermMaxSize: 1000,
+    autoConsolidate: true,
+}, undefined, new SimpleTFIDFEmbedding());
 
-// 2. 定义流程图
-const graph = {
-  nodes: [
-    new LLMPlannerNode(toolRegistry),
-    new ToolRunnerNode(toolRegistry),
-    new VerifierNode(),
-    new ResponderNode(),
-  ],
-  edges: [
-    { from: 'planner', to: 'tool-runner' },
-    { from: 'tool-runner', to: 'verifier' },
-    { from: 'verifier', to: 'responder' },
-  ],
-  entryNode: 'planner',
-  maxSteps: 50,
-};
-
-// 3. 创建 Runner 并执行
-const runner = new GraphRunner(graph);
-const initialState = createState('优化这段 SQL 并保持结果一致', {
-  permissions: { 'sql:read': true, 'document:read': true },
+// 记住信息
+memory.remember('用户偏好使用深色主题', {
+    tags: ['ui', 'preference'],
+    importance: 0.8,
 });
 
-const result = await runner.execute(initialState);
-console.log('最终结果:', result.state);
+// 回忆信息
+const results = await memory.recall({ tags: ['ui'] });
+
+// 语义搜索
+const relevant = await memory.longTerm.search('界面设置');
 ```
 
-## 📦 项目结构
+### 使用 LLM 服务层
 
-```
-src/
-├── core/              # 核心框架
-│   ├── types.ts       # 类型定义
-│   ├── state.ts       # State 管理
-│   ├── event-stream.ts # 事件流
-│   ├── tool-registry.ts # 工具注册
-│   ├── error-handler.ts # 错误处理
-│   ├── node.ts        # Node 基类
-│   ├── runner.ts      # 执行器
-│   └── debug-bundle.ts # Debug 导出
-├── nodes/             # 节点实现
-│   ├── planner.ts
-│   ├── tool-runner.ts
-│   ├── verifier.ts
-│   └── responder.ts
-├── tools/             # 示例工具
-│   └── example-tools.ts
-├── adapters/          # 持久化适配器
-│   └── indexeddb-adapter.ts
-└── index.ts           # 主入口
+```typescript
+import { 
+    createLLMService, 
+    createSystemPromptMiddleware,
+    createLoggingMiddleware 
+} from 'agent-workflow-framework';
 
-demo/                  # Demo 应用
-├── demo.html
-├── demo.ts
-└── demo.css
+// 创建服务
+const service = createLLMService(provider, {
+    cache: { enabled: true, ttl: 60000 },
+    retry: { maxRetries: 3 },
+});
 
-docs/                  # 文档
-├── EXTENDING.md       # 扩展指南
-└── DEBUG_BUNDLE_FORMAT.md # Debug Bundle 格式
+// 添加中间件
+const logging = createLoggingMiddleware();
+service.useRequest(logging.request);
+service.useResponse(logging.response);
+service.useRequest(createSystemPromptMiddleware('You are a helpful assistant.'));
+
+// 发送请求
+const result = await service.chat({
+    messages: [{ role: 'user', content: 'Hello!' }],
+});
+
+// 查看统计
+console.log(service.getStats());
 ```
 
-## 📚 文档
+### 注册和使用工具
 
-- [扩展指南](docs/EXTENDING.md) - 如何新增节点、工具、持久化
-- [Debug Bundle 格式](docs/DEBUG_BUNDLE_FORMAT.md) - 调试信息导出格式
-- [LM Studio 配置](docs/LM_STUDIO_SETUP.md) - 本地 LLM 集成指南
+```typescript
+import { ToolRegistry } from 'agent-workflow-framework';
 
-## 🔧 核心概念
+const registry = new ToolRegistry();
 
-### State（状态容器）
+// 注册工具
+registry.register({
+    name: 'searchDatabase',
+    description: 'Search the database for information',
+    schema: {
+        type: 'object',
+        properties: {
+            query: { type: 'string' },
+            limit: { type: 'number' },
+        },
+        required: ['query'],
+    },
+    execute: async (params) => {
+        // 执行搜索
+        return { results: [...] };
+    },
+});
 
-所有数据流经单一 State，包含：
-- `conversation`: 消息历史
-- `task`: 任务目标、计划、步骤、进度
-- `memory`: 短期/长期记忆
-- `artifacts`: 工具结果、文件等
-- `telemetry`: 耗时、token、调用次数
-- `policy`: 预算、权限、重试策略
+// 在 Agent 中使用
+const agent = createAgent({
+    llmProvider: provider,
+    toolRegistry: registry,
+    mode: 'agent', // 启用工具调用
+});
+```
 
-### Node（节点）
+## 📚 核心概念
 
-所有节点实现统一接口：`execute(state: State) => Promise<NodeResult>`
+### Agent 模式
 
-内置节点：
-- **Planner**: 解析目标，生成计划与步骤
-- **ToolRunner**: 执行工具调用
-- **Verifier**: 验证结果有效性
-- **Responder**: 汇总结果，生成答复
+| 模式 | 描述 | 使用场景 |
+|------|------|---------|
+| **chat** | 直接对话，不使用工具 | 简单问答、对话 |
+| **agent** | 使用工具执行任务 | 需要工具调用的复杂任务 |
+| **auto** | 自动选择模式 | 通用场景 |
 
-### Tool（工具）
+### 状态管理
 
-工具必须注册并声明：
-- `inputSchema` / `outputSchema`: Zod schema 校验
-- `timeout`: 超时时间
-- `retryPolicy`: 重试策略
-- `permissions`: 所需权限
-- `allowedNodes`: 允许调用的节点
-- `execute(input, context)`: 支持 `context.onStream` 回调实现流式输出
+```typescript
+import { createState, updateState } from 'agent-workflow-framework';
 
-### Error Handling（错误处理）
+// 创建状态
+const state = createState({
+    user: 'Alice',
+    task: 'analyze_data',
+});
 
-错误分类：
-- `network` / `timeout`: 可重试
-- `permission` / `validation`: 不可重试
-- `budget_exceeded`: 直接终止
+// 更新状态（不可变）
+const newState = updateState(state, {
+    progress: 0.5,
+    status: 'processing',
+});
+```
 
-策略：
-- 重试（指数退避）
-- 降级（备用工具）
-- 回滚（恢复 checkpoint）
-- 终止（带原因）
+### 事件系统
 
-### Checkpoint（检查点）
+```typescript
+import { EventStream } from 'agent-workflow-framework';
 
-每个节点完成后自动保存 checkpoint，包含：
-- 完整 State 快照
-- 事件流索引
-- 时间戳
+const eventStream = new EventStream();
 
-支持从 checkpoint 恢复，避免重复工具调用。
+// 监听事件
+eventStream.on('progress', (event) => {
+    console.log(`Progress: ${event.progress}%`);
+});
 
-## 🛡️ 安全特性
+eventStream.on('tool_start', (event) => {
+    console.log(`Tool ${event.tool} started`);
+});
 
-- **SQL 工具**: 默认 SELECT-only，拒绝 INSERT/UPDATE/DELETE
-- **权限控制**: 工具必须声明所需权限，State 必须授予
-- **预算限制**: 最大工具调用次数、总耗时、重试次数
-- **契约校验**: 输入输出严格校验，防止意外数据
+// 在 Agent 中使用
+const agent = createAgent({
+    llmProvider: provider,
+    eventStream,
+});
+```
+
+### 中断和恢复
+
+```typescript
+import { createAbortController } from 'agent-workflow-framework';
+
+// 创建中断控制器
+const abortController = createAbortController();
+
+// 开始任务
+const resultPromise = agent.chat('执行长时间任务', {
+    abortController,
+});
+
+// 中断任务
+setTimeout(() => {
+    abortController.abort('用户取消');
+}, 5000);
+
+// 恢复任务
+const checkpoint = abortController.getCurrentCheckpoint();
+if (checkpoint) {
+    const resumedResult = await agent.resume(checkpoint);
+}
+```
+
+## 🔧 API 文档
+
+### Agent
+
+```typescript
+class Agent {
+    // 发送消息
+    chat(message: string, options?: ChatOptions): Promise<AgentResult>
+    
+    // 中断执行
+    abort(reason?: string): void
+    
+    // 恢复执行
+    resume(checkpoint: Checkpoint): Promise<AgentResult>
+    
+    // 检查状态
+    isAgentRunning(): boolean
+}
+```
+
+### MemoryManager
+
+```typescript
+interface MemoryManager {
+    // 记住信息
+    remember<T>(content: T, options?): Promise<string> | string
+    
+    // 回忆信息
+    recall<T>(query): Promise<MemoryItem<T>[]>
+    
+    // 提升到长期记忆
+    promoteToLongTerm(key: string): Promise<string | null>
+    
+    // 获取统计
+    getStats(): MemoryStats
+}
+```
+
+### LLMService
+
+```typescript
+class LLMService {
+    // 发送请求
+    chat(request: ChatRequest, options?): Promise<LLMResult>
+    
+    // 流式请求
+    chatStream(request: ChatRequest, options?): Promise<LLMStreamResult>
+    
+    // 添加中间件
+    useRequest(middleware: LLMRequestMiddleware): this
+    useResponse(middleware: LLMResponseMiddleware): this
+    useError(middleware: LLMErrorMiddleware): this
+    
+    // 获取统计
+    getStats(): LLMAggregateStats
+}
+```
+
+## 📖 更多文档
+
+- [记忆系统指南](./docs/MEMORY_SYSTEM.md)
+- [核心原则](./docs/agent/CORE_PRINCIPLES.md)
+- [编码标准](./docs/agent/CODING_STANDARDS.md)
+- [常见模式](./docs/agent/COMMON_PATTERNS.md)
 
 ## 🧪 测试
 
 ```bash
-npm run test
+# 运行测试
+npm test
+
+# 运行测试（单次）
+npm run test:run
+
+# 生成覆盖率报告
 npm run test:coverage
 ```
 
-## 📝 License
+## 🏗️ 构建
 
-MIT
+```bash
+# 构建库
+npm run build:lib
+
+# 构建 Demo
+npm run build
+```
+
+## 📊 架构
+
+```
+agent-workflow-framework/
+├── src/
+│   ├── core/              # 核心模块
+│   │   ├── agent.ts       # Agent 核心逻辑
+│   │   ├── state.ts       # 状态管理
+│   │   ├── event-stream.ts # 事件系统
+│   │   ├── llm-provider.ts # LLM 抽象层
+│   │   ├── llm-service/   # LLM 服务层
+│   │   ├── memory/        # 记忆系统
+│   │   └── ...
+│   ├── nodes/             # 工作流节点
+│   ├── providers/         # LLM Provider 实现
+│   ├── tools/             # 示例工具
+│   └── index.ts           # 主入口
+├── tests/                 # 测试文件
+└── docs/                  # 文档
+```
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 PR！
+欢迎贡献！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解详情。
 
-## 📧 联系
+## 📄 许可证
 
-如有问题，请提交 Issue。
+[MIT](./LICENSE)
+
+## 🙏 致谢
+
+本项目受到以下项目的启发：
+- [LangGraph](https://github.com/langchain-ai/langgraph)
+- [CrewAI](https://github.com/joaomdmoura/crewAI)
+- [AutoGPT](https://github.com/Significant-Gravitas/AutoGPT)
+
+## 🔗 相关链接
+
+- [GitHub Repository](https://github.com/yapweijun1996/Chatbox-Agent-Framework)
+- [NPM Package](https://www.npmjs.com/package/agent-workflow-framework)
+- [Issues](https://github.com/yapweijun1996/Chatbox-Agent-Framework/issues)
+- [Changelog](./CHANGELOG.md)
+
+## 💬 支持
+
+如果您遇到问题或有建议，请：
+1. 查看 [文档](./docs/)
+2. 搜索 [已有 Issues](https://github.com/yapweijun1996/Chatbox-Agent-Framework/issues)
+3. 创建 [新 Issue](https://github.com/yapweijun1996/Chatbox-Agent-Framework/issues/new)
+
+---
+
+**Made with ❤️ for the AI Agent Community**

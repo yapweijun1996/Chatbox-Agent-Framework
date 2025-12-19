@@ -11,7 +11,18 @@ export class SidebarManager {
         this.isOpen = savedState !== null ? savedState === 'true' : window.innerWidth >= 768;
 
         this.overlay?.addEventListener('click', () => this.close());
+
+        // Prevent initial transition animation
+        this.sidebar.style.transition = 'none';
         this.applyState();
+
+        // Force reflow to ensure state is applied without transition
+        this.sidebar.offsetHeight;
+
+        // Restore transitions
+        requestAnimationFrame(() => {
+            this.sidebar.style.transition = '';
+        });
     }
 
     toggle(): void {

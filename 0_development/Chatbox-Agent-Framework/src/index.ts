@@ -34,6 +34,15 @@ export { GraphRunner } from './core/runner';
 // Agent 核心类
 export { Agent, createAgent, type AgentConfig, type AgentResult, type ChatOptions, type AgentMode, type ProviderConfigInput } from './core/agent';
 
+// Abort/Resume 控制
+export {
+    AgentAbortController,
+    createAbortController,
+    isAbortError,
+    type AbortState,
+    type ResumeOptions,
+} from './core/abort-controller';
+
 // Debug Bundle
 export {
     createDebugBundle,
@@ -86,3 +95,72 @@ export {
 
 // 持久化适配器
 export { IndexedDBAdapter } from './adapters/indexeddb-adapter';
+
+// LLM Service 高级服务层
+export {
+    // 核心服务
+    LLMService,
+    createLLMService,
+    // 缓存
+    LLMCache,
+    // 统计
+    LLMStatsCollector,
+    // 默认配置
+    DEFAULT_LLM_SERVICE_CONFIG,
+    // 内置中间件
+    createRequestLoggingMiddleware,
+    createResponseLoggingMiddleware,
+    createLoggingMiddleware,
+    createSystemPromptMiddleware,
+    createContentFilterMiddleware,
+    createTruncationMiddleware,
+    createValidationMiddleware,
+    createTransformMiddleware,
+    createJsonParseMiddleware,
+    createFallbackMiddleware,
+    createErrorLoggingMiddleware,
+    createErrorTransformMiddleware,
+    // 类型
+    type LLMRequestOptions,
+    type LLMRequestContext,
+    type LLMResult,
+    type LLMStreamResult,
+    type LLMRequestMiddleware,
+    type LLMResponseMiddleware,
+    type LLMErrorMiddleware,
+    type LLMCallStats,
+    type LLMAggregateStats,
+    type LLMServiceConfig,
+    type RetryConfig,
+    type CacheConfig,
+    type RateLimitConfig,
+} from './core/llm-service';
+
+// 记忆系统
+export {
+    // 核心实现
+    ShortTermMemoryStore,
+    LongTermMemoryStore,
+    InMemoryPersistenceAdapter,
+    MemoryManagerImpl,
+    createMemoryManager,
+    SimpleTFIDFEmbedding,
+    OpenAIEmbedding,
+    cosineSimilarity,
+    // 默认配置
+    DEFAULT_MEMORY_CONFIG,
+    // 类型
+    type MemoryImportance,
+    type MemoryMetadata,
+    type MemoryItem,
+    type MemoryQueryOptions,
+    type ShortTermMemory,
+    type LongTermMemoryItem,
+    type SemanticSearchOptions,
+    type MemoryPersistenceAdapter,
+    type EmbeddingGenerator,
+    type LongTermMemory,
+    type MemoryManagerConfig,
+    type MemoryStats,
+    type MemoryManager,
+} from './core/memory';

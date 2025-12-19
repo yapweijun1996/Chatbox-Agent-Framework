@@ -105,7 +105,9 @@ export type EventType =
     | 'checkpoint'
     | 'budget_warning'
     | 'budget_exceeded'
-    | 'stream_chunk'; // 新增：流式数据块
+    | 'stream_chunk'
+    | 'abort'   // 任务中断
+    | 'resume'; // 任务恢复
 
 export interface Event {
     id: string;

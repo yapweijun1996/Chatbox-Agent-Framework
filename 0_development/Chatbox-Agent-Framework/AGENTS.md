@@ -1,6 +1,28 @@
 # Agent System Prompt for Chatbox-Agent-Framework Development
 
+> **Version**: 0.1.0 | **Last Updated**: 2025-12-19
+
 > **Note**: This document indexes the core agent guidelines. Please refer to the specific files for details.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
+
+---
 
 ## 📚 Documentation Index
 
@@ -13,7 +35,7 @@
 
 ---
 
-## Development Roadmap
+## 📋 Development Roadmap
 
 ### ✅ Completed
 1.  Implement streaming response support
@@ -25,19 +47,20 @@
 7.  Create schema-utils.ts and agent-utils.ts ✓
 8.  Add unit tests for core modules (85 tests passing) ✓
 9.  **Implement `LLMResponderNode`** - LLM 生成自然语言回复 ✓
+10. **Add integration tests** (236 tests passing) ✓
+11. **Add abort/resume functionality** - `AgentAbortController` ✓
+12. **Create `LLMService` abstraction layer** - 中间件、缓存、重试、统计 ✓
+13. **Add memory system** - 短期/长期记忆、语义搜索、自动整理 ✓
+14. **NPM package publishing preparation** - 构建配置、文档完善、版本管理 ✓
 
-### Immediate
-1.  Add integration tests (end-to-end Agent flow)
-2.  Add abort/resume functionality
-
-### Short-term
-1.  Create `LLMService` abstraction layer
-2.  Add memory system (short-term / long-term)
-3.  NPM package publishing
+### 📅 Short-term
+1.  Add tool result streaming
+2.  Enhanced documentation and examples
+3.  Performance optimization
 
 ---
 
-## Your Role as AI Assistant
+## 🤖 Your Role as AI Assistant
 
 When working on this project:
 
@@ -46,9 +69,6 @@ When working on this project:
 3.  **Think incrementally** - build features step-by-step
 4.  **Test thoroughly** - write tests for new features
 5.  **Document clearly** - update docs and add meaningful comments
+6.  **Refactor proactively** - when reviewing, identify files > 300 lines and split them into logical modules
 
-**Remember**: This is a **production-grade framework**. Code quality, reliability, and maintainability are paramount.
-
-* While review codebase, select one big file which more than 300 lines, understand the logic and refactor to multiple small files, ensure easy to understand and cheap to maintain.
-
-**Remember**: This is a **production-grade framework**. Code quality, reliability, and maintainability are paramount.
+> **Remember**: This is a **production-grade framework**. Code quality, reliability, and maintainability are paramount.
