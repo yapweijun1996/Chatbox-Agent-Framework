@@ -1,0 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+@import "./styles/theme.css";
+@import "./styles/base.css";
+@import "./styles/sidebar.css";
+@import "./styles/top-bar.css";
+@import "./styles/chat.css";
+@import "./styles/composer.css";
+@import "./styles/debug.css";
+@import "./styles/utilities.css";
+@source "./**/*.{html,ts}";
+@source "../src/**/*.{html,ts}";
+
+@media (max-width: 767px) {
+    .composer-container {
+        padding: 0 12px;
+    }
+
+    .message-inner {
+        padding: 18px 16px;
+    }
+
+    .top-inner {
+        padding: 0 10px;
+    }
+}

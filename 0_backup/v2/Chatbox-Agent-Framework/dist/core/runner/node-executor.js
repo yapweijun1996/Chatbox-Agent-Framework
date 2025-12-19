@@ -1,0 +1,59 @@
+import { StateHelpers } from '../state';
+import { createError, getErrorStrategy, getBackoffDelay, ErrorType } from '../error-handler';
+export class NodeExecutor {
+    deps;
+    constructor(deps) {
+        this.deps = deps;
+    }
+    async run(node, state) {
+        await this.deps.hooks?.onNodeStart?.(node.id, state);
+        this.deps.eventStream.emit('node_start', 'info', `开始执行节点: ${node.name}`, {
+            nodeId: node.id,
+        });
+        let retryCount = 0;
+        let lastError;
+        const context = {
+            emitEvent: (type, status, summary, payload) => {
+                this.deps.eventStream.emit(type, status, summary, {
+                    nodeId: node.id,
+                    payload,
+                });
+            }
+        };
+        while (retryCount <= state.policy.maxRetries) {
+            try {
+                const startTime = Date.now();
+                const result = await node.execute(state, context);
+                const duration = Date.now() - startTime;
+                result.state = StateHelpers.recordNodeTiming(result.state, node.id, duration);
+                await this.deps.hooks?.onNodeEnd?.(node.id, result);
+                return result;
+            }
+            catch (error) {
+                lastError = error instanceof Error ? error : new Error(String(error));
+                const agentError = createError(ErrorType.EXECUTION, lastError.message, {
+                    nodeId: node.id,
+                    retryable: true,
+                    originalError: lastError,
+                });
+                const strategy = getErrorStrategy(agentError, retryCount, state.policy.maxRetries);
+                if (strategy.shouldRetry) {
+                    retryCount++;
+                    const delay = getBackoffDelay(retryCount - 1);
+                    this.deps.eventStream.emit('retry', 'warning', strategy.suggestion || '重试中...', {
+                        nodeId: node.id,
+                        metadata: { retryCount, delay },
+                    });
+                    state = StateHelpers.incrementRetry(state);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                else {
+                    state = StateHelpers.incrementError(state);
+                    throw lastError;
+                }
+            }
+        }
+        throw lastError;
+    }
+}
+//# sourceMappingURL=node-executor.js.map
