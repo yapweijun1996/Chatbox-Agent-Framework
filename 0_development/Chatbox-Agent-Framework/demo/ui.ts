@@ -28,6 +28,7 @@ type CallbackMap = {
 export class UIController {
     private sidebar: HTMLElement;
     private debugDrawer: HTMLElement;
+    private debugOverlay: HTMLElement | null;
     private chatContainer: HTMLElement;
     private messagesList: HTMLElement;
     private userInput: HTMLTextAreaElement;
@@ -69,6 +70,7 @@ export class UIController {
     constructor() {
         this.sidebar = document.getElementById('sidebar')!;
         this.debugDrawer = document.getElementById('debug-drawer')!;
+        this.debugOverlay = document.getElementById('debug-overlay');
         this.chatContainer = document.getElementById('chat-container')!;
         this.messagesList = document.getElementById('messages-list')!;
         this.userInput = document.getElementById('user-input') as HTMLTextAreaElement;
@@ -156,22 +158,41 @@ export class UIController {
         document.getElementById('toggle-sidebar-btn')?.addEventListener('click', () => this.sidebarManager.toggle());
         document.getElementById('mobile-menu-btn')?.addEventListener('click', () => this.sidebarManager.toggle());
 
+        const debugSearchInput = document.getElementById('debug-search-input') as HTMLInputElement | null;
+        const openDebugDrawer = () => {
+            if (this.isDebugDrawerOpen()) return;
+            this.setDebugDrawerOpen(true);
+            this.unreadDebugEvents = 0;
+            this.updateDebugBadge(0);
+        };
+
+        const closeDebugDrawer = () => {
+            if (!this.isDebugDrawerOpen()) return;
+            this.setDebugDrawerOpen(false);
+        };
+
         const toggleDebug = () => {
-            const isClosed = this.debugDrawer.classList.toggle('translate-x-full');
-            if (!isClosed) {
-                this.unreadDebugEvents = 0;
-                this.updateDebugBadge(0);
+            if (this.isDebugDrawerOpen()) {
+                this.setDebugDrawerOpen(false);
+                return;
             }
+            this.setDebugDrawerOpen(true);
+            this.unreadDebugEvents = 0;
+            this.updateDebugBadge(0);
         };
         document.getElementById('toggle-debug-btn')?.addEventListener('click', toggleDebug);
-        document.getElementById('close-debug-btn')?.addEventListener('click', toggleDebug);
+        document.getElementById('close-debug-btn')?.addEventListener('click', closeDebugDrawer);
+        this.debugOverlay?.addEventListener('click', closeDebugDrawer);
 
-        document.getElementById('new-chat-btn')?.addEventListener('click', () => {
+        const handleNewChat = () => {
+            if (store.getState().isGenerating) return;
             this.onNewChat?.();
             if (window.innerWidth < 768) {
                 this.sidebarManager.close();
             }
-        });
+        };
+
+        document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
 
         this.promptLibraryBtn?.addEventListener('click', () => {
             this.togglePromptLibrary();
@@ -200,6 +221,19 @@ export class UIController {
         document.getElementById('stream-toggle-btn')?.addEventListener('click', () => this.onStreamToggle?.());
 
         document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if ((e.metaKey || e.ctrlKey) && key === 'k') {
+                e.preventDefault();
+                openDebugDrawer();
+                debugSearchInput?.focus();
+                debugSearchInput?.select();
+                return;
+            }
+            if ((e.metaKey || e.ctrlKey) && key === 'n') {
+                e.preventDefault();
+                handleNewChat();
+                return;
+            }
             if (e.key === 'Escape') {
                 if (store.getState().isGenerating) {
                     this.onStopGeneration?.();
@@ -207,6 +241,10 @@ export class UIController {
                 }
                 if (this.isPromptLibraryOpen) {
                     this.togglePromptLibrary(false);
+                    return;
+                }
+                if (this.isDebugDrawerOpen()) {
+                    this.setDebugDrawerOpen(false);
                     return;
                 }
                 if (!this.settingsModal.classList.contains('hidden')) {
@@ -411,6 +449,15 @@ export class UIController {
         if (!this.composerHint || document.body.classList.contains('hint-dismissed')) return;
         this.composerHint.classList.add('highlight');
         setTimeout(() => this.composerHint?.classList.remove('highlight'), 1200);
+    }
+
+    private setDebugDrawerOpen(isOpen: boolean) {
+        this.debugDrawer.classList.toggle('translate-x-full', !isOpen);
+        this.debugOverlay?.classList.toggle('active', isOpen);
+    }
+
+    private isDebugDrawerOpen(): boolean {
+        return !this.debugDrawer.classList.contains('translate-x-full');
     }
 
     private updateDebugBadge(count: number) {

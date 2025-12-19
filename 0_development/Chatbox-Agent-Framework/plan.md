@@ -1,64 +1,58 @@
-# UI Enhancement Plan
+# Development Plan - Chatbox Agent Framework
 
-## 1. Overview
-This plan focuses on refining the Chatbox Agent Framework UI to achieve a premium, professional aesthetic while maintaining a developer-friendly codebase. The goal is to address recent feedback (e.g., button sizing), ensure design consistency, and leverage modern CSS/Tailwind features.
+## 🎯 Current Status: Pre-release v0.1.0
+The framework core logic is complete, tested, and documented. The demo UI is functional but needs final polishing before the initial public release.
 
-## 2. Visual Audit & Refinements
+---
 
-### 2.1 Buttons & Controls
-- **Target**: `.new-chat-btn` in Sidebar.
-- **Issue**: Previously reported as "big and ugly".
-- **Plan**:
-    - Reduce height from `56px` to `44px` or `48px`.
-    - Simplify the gradient to a more subtle solid color with a hover state.
-    - Reduce the icon box size.
-    - **Status**: TO DO.
+## 🚀 Immediate Tasks (v0.1.0 Release)
 
-- **Target**: `pill-btn` in Top Bar.
-- **Plan**: Ensure stroke/border colors are subtle (opacity 0.08 -> 0.12 on hover).
+### 1. UI/UX Polishing (Premium Feel)
+- [x] **Aesthetic Refinement**:
+    - [x] Update color palette to a more harmonious, professional set (using CSS variables).
+    - [x] Add subtle micro-animations for message entry, hover states, and transitions.
+    - [x] Enhance "Glassmorphism" effect for sidebar and top bar.
+    - [x] Improve typography (use Google Fonts like 'Inter' or 'Outfit').
+- [ ] **Accessibility & Responsiveness**:
+    - [x] Ensure mobile view is flawless.
+    - [x] Add keyboard shortcuts (e.g., `Cmd+K` for search, `Cmd+N` for new chat).
+- [x] **Debug Console**:
+    - [x] Finalize the "Event Viewer" with better categorization and search.
 
-### 2.2 Typography & Spacing
-- **Fonts**: Confirm `Inter` for UI text and `JetBrains Mono` for code/logs.
-- **Hierarchy**:
-    - Sidebar headers: uppercase, tracking `0.04em`, smaller size (`11px`).
-    - Chat messages: `15px` or `16px` for readability, line-height `1.5` or `1.6`.
+### 2. Final Release Preparation
+- [ ] **Test Execution**: Run full test suite one last time (`npm test`).
+- [ ] **Build Validation**: Verified production build using `npm run build`.
+- [ ] **NPM Publish**: Execute `npm publish` following `PUBLISH_READY.md`.
+- [ ] **GitHub Release**: Create the first release tag and documentation on GitHub.
 
-### 2.3 Color System (`theme.css` vs `tailwind.config.js`)
-- **CRITICAL ISSUE**: There is a conflict between `demo/styles/theme.css` (which has the new "premium" values) and `tailwind.config.js` (which holds legacy/gray values).
-- **Impact**: Classes like `bg-bg-sidebar` in HTML might be pulling the wrong color from the JS config, while CSS files use the CSS variables.
-- **Action Items**:
-    - Migrate fully to Tailwind v4 CSS-first configuration.
-    - Deprecate `tailwind.config.js` color definitions in favor of `theme.css` variables.
-    - Ensure all Tailwind classes resolve to the CSS variables (e.g., color `bg-sidebar` should map to `var(--color-bg-sidebar)`).
+---
 
-### 2.4 Layout & Shell
-- **App Shell**: The background `.drift` animation (`base.css`) is nice. Ensure it doesn't cause high CPU usage (will check `will-change`).
-- **Sidebar**:
-    - Verify glassmorphism (`backdrop-filter`) works across browsers.
-    - Mobile transition: Ensure the slide-in doesn't jitter.
+## 📅 Short-term Goals (v0.2.0)
 
-## 3. Implementation Steps
+### 1. Tool Interaction Enhancements
+- [ ] **Tool Result Streaming**: Allow UI to display intermediate tool execution steps in real-time.
+- [ ] **Human-in-the-loop**: Implement a "Confirmation Node" where the agent pauses for user approval before sensitive tool execution.
 
-### Step 1: Theme & Variables
-- Update `demo/styles/theme.css` to use a consistent HSL-based color system.
-- Add utility vars for common shadows and blurs.
+### 2. Memory System 2.0
+- [ ] **Persistent Vector Storage**: Integrate a lightweight client-side vector DB (e.g., for IndexedDB).
+- [ ] **Memory Pruning**: Automatic summarization of long-term memory to save context tokens.
 
-### Step 2: Component Refactoring
-- **Sidebar**:
-    - Refine `.new-chat-btn`: Make it sleeker.
-    - Adjust `.sidebar-header` spacing.
-- **Top Bar**:
-    - [x] Adjust `.model-chip` and controls to align perfectly (Implemented absolute centering & refined styling).
+### 3. Developer Experience
+- [ ] **CLI Tool**: A simple CLI to scaffold new agents or tools.
+- [ ] **Plugin System**: Formalize how third-party adapters and providers can be added.
 
-### Step 3: Tailwind Integration
-- Clean up `demo/index.html` classes.
-- Move reusable utility classes (like `glass-panel`) to `@layer components` in `utilities.css` or `base.css` if we want to use Tailwind fully.
+---
 
-### Step 4: Polish
-- Add "Empty State" illustrations or icons for the chat area.
-- Enhance the "Welcome" screen with better cards.
+## 🔭 Long-term Vision (v0.5.0+)
 
-## 4. Next Actions
-- [ ] Review this plan.
-- [ ] Approve refinement of `.new-chat-btn`.
-- [ ] Approve color palette tweaks.
+- [ ] **Multi-Agent Collaboration**: Support for "Agent Swarms" or hierarchical agent structures.
+- [ ] **Browser Extension**: A version of the chatbox that lives in the browser as a side-panel.
+- [ ] **Voice Integration**: Native support for STT/TTS in the workflow.
+
+---
+
+## 📝 Recent Changes
+- [x] Initialized development plan.
+- [x] Completed IndexedDB persistence for conversation history.
+- [x] Refined sidebar logic and responsive behavior.
+- [x] Enhanced debug console with filtering support.
