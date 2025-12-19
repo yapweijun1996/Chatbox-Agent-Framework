@@ -41,6 +41,7 @@ export interface Task {
     currentNode: string; // 当前执行节点
     currentStepIndex: number; // 当前步骤索引
     progress: number; // 进度 0-100
+    pendingToolCall?: PendingToolCall; // 等待确认的工具调用
 }
 
 /** 记忆存储 */
@@ -100,6 +101,8 @@ export type EventType =
     | 'node_end'
     | 'tool_call'
     | 'tool_result'
+    | 'confirmation_required'
+    | 'confirmation_result'
     | 'error'
     | 'retry'
     | 'checkpoint'
@@ -161,6 +164,8 @@ export interface Tool {
     timeout: number; // 超时时间（ms）
     retryPolicy: RetryPolicy;
     permissions: string[]; // 所需权限
+    requiresConfirmation?: boolean; // 是否需要人工确认
+    confirmationMessage?: string; // 确认提示文本
     allowedNodes?: string[]; // 允许调用的节点白名单
     execute(input: unknown, context?: ToolContext): Promise<unknown>; // 更新：增加 context 参数
 }
@@ -170,6 +175,39 @@ export interface ToolContext {
     onStream?: (chunk: string) => void; // 流式回调
     signal?: AbortSignal; // 中断信号
 }
+
+/** 待确认的工具调用 */
+export interface PendingToolCall {
+    toolName: string;
+    input: unknown;
+    stepId: string;
+    stepDescription: string;
+    permissions: string[];
+    confirmationMessage?: string;
+    requestedAt: number;
+    status: 'pending' | 'approved' | 'denied';
+    decisionReason?: string;
+    decidedAt?: number;
+}
+
+export interface ToolConfirmationRequest {
+    toolName: string;
+    input: unknown;
+    stepId: string;
+    stepDescription: string;
+    permissions: string[];
+    confirmationMessage?: string;
+    requestedAt: number;
+}
+
+export interface ToolConfirmationDecision {
+    approved: boolean;
+    reason?: string;
+}
+
+export type ToolConfirmationHandler = (
+    request: ToolConfirmationRequest
+) => Promise<ToolConfirmationDecision | boolean>;
 
 // ============================================================================
 // Error 相关类型

@@ -11,12 +11,13 @@ import { LLMProvider, type ChatMessage } from './llm-provider';
 import { createProviderFromSettings, createLLMProvider, type SettingsBasedConfig, type LLMProviderConfig } from '../providers';
 import { LLMPlannerNode } from '../nodes/llm-planner';
 import { ToolRunnerNode } from '../nodes/tool-runner';
+import { ConfirmationNode } from '../nodes/confirmation';
 import { VerifierNode } from '../nodes/verifier';
 import { ResponderNode } from '../nodes/responder';
 import { LLMResponderNode } from '../nodes/llm-responder';
 import { shouldUseAgentMode, formatAgentResponse } from './agent-utils';
 import { AgentAbortController, isAbortError, type ResumeOptions } from './abort-controller';
-import type { State, Tool, GraphDefinition, RunnerHooks, Checkpoint } from './types';
+import type { State, Tool, GraphDefinition, RunnerHooks, Checkpoint, ToolConfirmationHandler } from './types';
 
 // ============================================================================
 // 类型定义
@@ -35,6 +36,8 @@ export interface AgentConfig {
     hooks?: RunnerHooks;
     /** 是否使用 LLM 生成自然语言回复 */
     useLLMResponder?: boolean;
+    /** 工具确认回调（用于人工确认） */
+    confirmTool?: ToolConfirmationHandler;
 }
 
 export interface ChatOptions {
@@ -76,6 +79,7 @@ export class Agent {
         maxSteps: number;
         hooks: RunnerHooks;
         useLLMResponder: boolean;
+        confirmTool?: ToolConfirmationHandler;
     };
     private conversationHistory: ChatMessage[] = [];
 
@@ -89,6 +93,7 @@ export class Agent {
             maxSteps: config.maxSteps || 15,
             hooks: config.hooks || {},
             useLLMResponder: config.useLLMResponder ?? false,
+            confirmTool: config.confirmTool,
         };
 
         this.provider = this.createProvider(this.config.provider);
@@ -108,6 +113,7 @@ export class Agent {
     private initializeRunner(): void {
         const planner = new LLMPlannerNode(this.toolRegistry, { provider: this.provider });
         const toolRunner = new ToolRunnerNode(this.toolRegistry, { provider: this.provider });
+        const confirmer = new ConfirmationNode({ onConfirm: this.config.confirmTool });
         const verifier = new VerifierNode();
 
         // 根据配置选择 Responder 类型
@@ -116,10 +122,16 @@ export class Agent {
             : new ResponderNode();
 
         const graph: GraphDefinition = {
-            nodes: [planner, toolRunner, verifier, responder],
+            nodes: [planner, toolRunner, confirmer, verifier, responder],
             edges: [
                 { from: 'planner', to: 'tool-runner' },
+                {
+                    from: 'tool-runner',
+                    to: 'confirmation',
+                    condition: (s) => s.task.pendingToolCall?.status === 'pending',
+                },
                 { from: 'tool-runner', to: 'verifier' },
+                { from: 'confirmation', to: 'tool-runner' },
                 { from: 'verifier', to: 'responder', condition: (s) => s.task.currentStepIndex >= s.task.steps.length },
                 { from: 'verifier', to: 'tool-runner', condition: (s) => s.task.currentStepIndex < s.task.steps.length },
             ],

@@ -20,6 +20,7 @@ describe('ToolRunnerNode', () => {
             timeout: 5000,
             retryPolicy: { maxRetries: 0, backoffMs: 0, backoffMultiplier: 0 },
             permissions: [],
+            requiresConfirmation: false,
             execute: vi.fn().mockResolvedValue({ result: 'success' }),
         };
 
@@ -178,5 +179,95 @@ describe('ToolRunnerNode', () => {
 
         expect(result.state.task.steps[0].status).toBe('completed');
         expect(result.state.task.currentStepIndex).toBe(0);
+    });
+
+    it('should defer execution when tool requires confirmation', async () => {
+        mockTool.requiresConfirmation = true;
+        const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
+        let state = createState('Test task');
+
+        state = updateState(state, draft => {
+            draft.task.steps = [
+                { id: 'step-1', description: 'Step needing confirmation', status: 'pending' }
+            ];
+            draft.task.currentStepIndex = 0;
+        });
+
+        const result = await runner.execute(state);
+
+        expect(mockTool.execute).not.toHaveBeenCalled();
+        expect(result.state.task.pendingToolCall?.status).toBe('pending');
+    });
+
+    it('should execute approved pending tool call', async () => {
+        const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
+        let state = createState('Test task');
+
+        state = updateState(state, draft => {
+            draft.task.steps = [
+                { id: 'step-1', description: 'Approved step', status: 'pending' }
+            ];
+            draft.task.currentStepIndex = 0;
+            draft.task.pendingToolCall = {
+                toolName: 'test-tool',
+                input: { query: 'test' },
+                stepId: 'step-1',
+                stepDescription: 'Approved step',
+                permissions: [],
+                requestedAt: Date.now(),
+                status: 'approved',
+            };
+        });
+
+        const result = await runner.execute(state);
+
+        expect(mockTool.execute).toHaveBeenCalledTimes(1);
+        expect(result.state.task.pendingToolCall).toBeUndefined();
+        expect(result.state.task.steps[0].status).toBe('completed');
+    });
+
+    it('should emit stream_chunk events for tool streaming', async () => {
+        const streamTool = {
+            name: 'stream-tool',
+            description: 'Stream tool',
+            inputSchema: z.object({}),
+            outputSchema: z.object({ result: z.string() }),
+            timeout: 5000,
+            retryPolicy: { maxRetries: 0, backoffMs: 0, backoffMultiplier: 0 },
+            permissions: [],
+            execute: vi.fn().mockImplementation(async (_input: unknown, ctx: any) => {
+                ctx?.onStream?.('chunk-1');
+                ctx?.onStream?.('chunk-2');
+                return { result: 'done' };
+            }),
+        };
+        toolRegistry.register(streamTool);
+        mockProvider.chat.mockResolvedValue({
+            content: '{"tool": "stream-tool", "input": {}}',
+            usage: { promptTokens: 5, completionTokens: 5, totalTokens: 10 },
+        });
+
+        const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
+        let state = createState('Test task');
+
+        state = updateState(state, draft => {
+            draft.task.steps = [
+                { id: 'step-1', description: 'Streaming step', status: 'pending' }
+            ];
+            draft.task.currentStepIndex = 0;
+        });
+
+        const streamEvents: Array<{ payload: any }> = [];
+        await runner.execute(state, {
+            emitEvent: (type: any, _status: any, _summary: string, payload?: unknown) => {
+                if (type === 'stream_chunk') {
+                    streamEvents.push({ payload });
+                }
+            },
+        });
+
+        expect(streamEvents.length).toBe(2);
+        expect(streamEvents[0].payload).toMatchObject({ chunk: 'chunk-1', toolName: 'stream-tool' });
+        expect(streamEvents[1].payload).toMatchObject({ chunk: 'chunk-2', toolName: 'stream-tool' });
     });
 });

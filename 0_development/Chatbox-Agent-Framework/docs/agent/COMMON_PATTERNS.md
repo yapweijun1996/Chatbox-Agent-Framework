@@ -29,11 +29,23 @@ const graph: GraphDefinition = {
 ### Pattern 3: Error Recovery
 ```typescript
 try {
-  return await retryWithBackoff(() => tool.execute(input), ...);
+    return await retryWithBackoff(() => tool.execute(input), ...);
 } catch (error) {
-  if (fallbackTool) return await fallbackTool.execute(simplifiedInput);
-  throw error;
+    if (fallbackTool) return await fallbackTool.execute(simplifiedInput);
+    throw error;
 }
+```
+
+### Pattern 4: Human-in-the-loop Tool Confirmation
+```typescript
+const agent = createAgent({
+  provider,
+  tools: [mySensitiveTool],
+  confirmTool: async (request) => {
+    const approved = await showApprovalModal(request);
+    return { approved, reason: approved ? 'user approved' : 'user denied' };
+  },
+});
 ```
 
 ## LM Studio Integration Guide

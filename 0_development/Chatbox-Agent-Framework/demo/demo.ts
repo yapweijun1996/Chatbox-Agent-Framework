@@ -122,6 +122,14 @@ function initializeAgent() {
         mode: 'auto', // 自动判断 chat 还是 agent 模式
         systemPrompt: 'You are a helpful AI assistant. Respond in the same language as the user.',
         streaming: isStreamEnabled,
+        confirmTool: async (request) => {
+            const message = [
+                request.confirmationMessage || 'Tool execution requires confirmation.',
+                `Tool: ${request.toolName}`,
+                `Step: ${request.stepDescription}`,
+            ].join('\n');
+            return { approved: window.confirm(message) };
+        },
         hooks: {
             onNodeStart: (nodeId) => addDebugStep(nodeId, 'running'),
             onNodeEnd: (nodeId, result) => updateDebugStep(nodeId, result),

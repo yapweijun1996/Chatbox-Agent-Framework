@@ -23,6 +23,28 @@ export class VerifierNode extends BaseNode {
                 throw new Error('没有可验证的步骤');
             }
 
+            if (currentStep.status === 'failed') {
+                const nextStepIndex = Math.min(state.task.currentStepIndex + 1, state.task.steps.length);
+                const totalSteps = state.task.steps.length || 1;
+                const progress = (nextStepIndex / totalSteps) * 80 + 10; // 10-90%
+
+                const newState = updateState(state, draft => {
+                    draft.task.currentStepIndex = nextStepIndex;
+                    draft.task.progress = Math.round(progress);
+                });
+
+                events.push({
+                    id: `evt-${Date.now()}`,
+                    timestamp: Date.now(),
+                    type: 'node_end',
+                    nodeId: this.id,
+                    status: 'warning',
+                    summary: `步骤 "${currentStep.description}" 已失败，跳过到下一步`,
+                });
+
+                return this.createResult(newState, events);
+            }
+
             const isValid = this.verify(currentStep.result);
 
             if (!isValid) {

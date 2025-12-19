@@ -39,4 +39,23 @@ describe('VerifierNode', () => {
         const warningEvent = result.events.find(evt => evt.status === 'warning');
         expect(warningEvent).toBeDefined();
     });
+
+    it('should advance when step is marked failed', async () => {
+        const verifier = new VerifierNode();
+        let state = createState('验证任务');
+
+        state = updateState(state, draft => {
+            draft.task.steps = [
+                { id: 'step-1', description: '失败步骤', status: 'failed', error: 'Denied' },
+                { id: 'step-2', description: '后续步骤', status: 'pending' },
+            ];
+            draft.task.currentStepIndex = 0;
+        });
+
+        const result = await verifier.execute(state);
+
+        expect(result.state.task.currentStepIndex).toBe(1);
+        const warningEvent = result.events.find(evt => evt.status === 'warning');
+        expect(warningEvent).toBeDefined();
+    });
 });

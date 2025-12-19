@@ -30,8 +30,8 @@ The framework core logic is complete, tested, and documented. The demo UI is fun
 ## 📅 Short-term Goals (v0.2.0)
 
 ### 1. Tool Interaction Enhancements
-- [ ] **Tool Result Streaming**: Allow UI to display intermediate tool execution steps in real-time.
-- [ ] **Human-in-the-loop**: Implement a "Confirmation Node" where the agent pauses for user approval before sensitive tool execution.
+- [x] **Tool Result Streaming**: Allow UI to display intermediate tool execution steps in real-time.
+- [x] **Human-in-the-loop**: Implement a "Confirmation Node" where the agent pauses for user approval before sensitive tool execution.
 
 ### 2. Memory System 2.0
 - [ ] **Persistent Vector Storage**: Integrate a lightweight client-side vector DB (e.g., for IndexedDB).

@@ -56,6 +56,7 @@ export {
 export { PlannerNode } from './nodes/planner';
 export { LLMPlannerNode, type LLMPlannerNodeConfig } from './nodes/llm-planner';
 export { ToolRunnerNode, type ToolRunnerNodeConfig } from './nodes/tool-runner';
+export { ConfirmationNode, type ConfirmationNodeConfig } from './nodes/confirmation';
 export { VerifierNode } from './nodes/verifier';
 export { ResponderNode } from './nodes/responder';
 export { LLMResponderNode, type LLMResponderNodeConfig } from './nodes/llm-responder';

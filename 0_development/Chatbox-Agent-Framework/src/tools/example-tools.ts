@@ -34,6 +34,8 @@ export const sqlQueryTool: Tool = {
     },
 
     permissions: ['sql:read'],
+    requiresConfirmation: true,
+    confirmationMessage: 'Execute database query?',
 
     allowedNodes: ['tool-runner'],
 
