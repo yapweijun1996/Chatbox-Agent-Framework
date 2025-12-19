@@ -4,12 +4,17 @@
 
 import type { LLMSettings, LLMProvider } from './settings';
 import { loadSettings, saveSettings } from './settings';
+import type { Conversation } from './db';
+import { dbStorage } from './db';
 
 export interface DemoState {
     isGenerating: boolean;
     settings: LLMSettings;
     selectedProvider: LLMProvider;
     isStreamEnabled: boolean;
+    conversations: Conversation[];
+    activeConversationId: string | null;
+    isInitialized: boolean;
 }
 
 type StateListener = (state: DemoState) => void;
@@ -24,7 +29,18 @@ class StateStore {
             settings: loadSettings(),
             selectedProvider: 'lm-studio',
             isStreamEnabled: true,
+            conversations: [],
+            activeConversationId: null,
+            isInitialized: false,
         };
+    }
+
+    async init() {
+        const conversations = await dbStorage.getAllConversations();
+        this.setState({
+            conversations,
+            isInitialized: true
+        });
     }
 
     getState(): DemoState {
@@ -32,8 +48,33 @@ class StateStore {
     }
 
     setState(partial: Partial<DemoState>) {
+        const oldConversations = this.state.conversations;
         this.state = { ...this.state, ...partial };
+
+        // Persist conversations if they changed
+        if (partial.conversations) {
+            this.persistChanges(partial.conversations, oldConversations);
+        }
+
         this.notifyListeners();
+    }
+
+    private async persistChanges(newConvs: Conversation[], oldConvs: Conversation[]) {
+        // Simple logic: Save any conversation that is different or new
+        // For performance, in a real app we'd track dirty states
+        for (const conv of newConvs) {
+            const old = oldConvs.find(c => c.id === conv.id);
+            if (!old || JSON.stringify(old) !== JSON.stringify(conv)) {
+                await dbStorage.saveConversation(conv);
+            }
+        }
+
+        // Handle deletions
+        for (const old of oldConvs) {
+            if (!newConvs.find(c => c.id === old.id)) {
+                await dbStorage.deleteConversation(old.id);
+            }
+        }
     }
 
     subscribe(listener: StateListener): () => void {

@@ -16,6 +16,8 @@ export { createError, getErrorStrategy, getBackoffDelay, retryWithBackoff, rollb
 export { BaseNode } from './core/node';
 // 执行器
 export { GraphRunner } from './core/runner';
+// Agent 核心类
+export { Agent, createAgent } from './core/agent';
 // Debug Bundle
 export { createDebugBundle, exportDebugBundle, downloadDebugBundle, importDebugBundle, } from './core/debug-bundle';
 // 节点实现
@@ -24,6 +26,7 @@ export { LLMPlannerNode } from './nodes/llm-planner';
 export { ToolRunnerNode } from './nodes/tool-runner';
 export { VerifierNode } from './nodes/verifier';
 export { ResponderNode } from './nodes/responder';
+export { LLMResponderNode } from './nodes/llm-responder';
 // 示例工具
 export { sqlQueryTool, documentSearchTool, getExampleTools } from './tools/example-tools';
 // LLM 工具 (旧版 - 逐步废弃)

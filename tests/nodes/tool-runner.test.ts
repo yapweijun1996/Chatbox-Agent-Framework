@@ -75,10 +75,10 @@ describe('ToolRunnerNode', () => {
         const result = await runner.execute(state);
 
         expect(result.state.task.steps[0].status).toBe('completed');
-        expect(result.state.task.currentStepIndex).toBe(1);
+        expect(result.state.task.currentStepIndex).toBe(0);
     });
 
-    it('should increment step index after completion', async () => {
+    it('should keep step index for verifier to advance', async () => {
         const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
         let state = createState('Test task');
 
@@ -92,7 +92,7 @@ describe('ToolRunnerNode', () => {
 
         const result = await runner.execute(state);
 
-        expect(result.state.task.currentStepIndex).toBe(1);
+        expect(result.state.task.currentStepIndex).toBe(0);
     });
 
     it('should emit tool_call event', async () => {
@@ -177,6 +177,6 @@ describe('ToolRunnerNode', () => {
         const result = await runner.execute(state);
 
         expect(result.state.task.steps[0].status).toBe('completed');
-        expect(result.state.task.currentStepIndex).toBe(1);
+        expect(result.state.task.currentStepIndex).toBe(0);
     });
 });

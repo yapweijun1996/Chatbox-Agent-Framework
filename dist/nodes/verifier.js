@@ -28,9 +28,12 @@ export class VerifierNode extends BaseNode {
                 });
                 return this.createResult(state, events);
             }
-            // 验证通过，更新进度
-            const progress = ((state.task.currentStepIndex + 1) / state.task.steps.length) * 80 + 10; // 10-90%
+            // 验证通过，更新进度并推进到下一步
+            const nextStepIndex = Math.min(state.task.currentStepIndex + 1, state.task.steps.length);
+            const totalSteps = state.task.steps.length || 1;
+            const progress = (nextStepIndex / totalSteps) * 80 + 10; // 10-90%
             const newState = updateState(state, draft => {
+                draft.task.currentStepIndex = nextStepIndex;
                 draft.task.progress = Math.round(progress);
             });
             events.push({

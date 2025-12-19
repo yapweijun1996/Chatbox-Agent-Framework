@@ -44,6 +44,7 @@ export interface ChatResponse {
 export interface ChatStreamChunk {
     delta: string;
     finishReason?: 'stop' | 'length' | 'tool_calls' | 'content_filter';
+    usage?: TokenUsage;
 }
 /**
  * LLM Provider 配置基类

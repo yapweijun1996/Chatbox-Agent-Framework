@@ -11,6 +11,33 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet">
+    <!-- Prevent FOUC: Set sidebar state before paint -->
+    <script>
+        (function () {
+            var isMobile = window.innerWidth < 768;
+            var savedState = localStorage.getItem('chatbox-sidebar-open');
+            var isOpen = savedState !== null ? savedState === 'true' : !isMobile;
+
+            // Set body class immediately for desktop collapsed state
+            if (!isMobile && !isOpen) {
+                document.documentElement.classList.add('sidebar-will-collapse');
+            }
+            // Set mobile closed state
+            if (isMobile && !isOpen) {
+                document.documentElement.classList.add('sidebar-will-hide');
+            }
+        })();
+    </script>
+    <style>
+        /* Instant state before CSS loads */
+        .sidebar-will-collapse body {
+            --sidebar-initial: collapsed;
+        }
+
+        .sidebar-will-hide #sidebar {
+            transform: translateX(-100%);
+        }
+    </style>
 </head>
 
 <body>
@@ -54,13 +81,6 @@
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-upgrade" type="button">
-                    <div class="upgrade-icon">★</div>
-                    <div>
-                        <div class="upgrade-title">Upgrade plan</div>
-                        <div class="upgrade-subtitle">Access faster models</div>
-                    </div>
-                </button>
                 <div class="sidebar-user">
                     <div class="user-avatar">U</div>
                     <div>
@@ -78,7 +98,7 @@
             <header class="top-bar">
                 <div class="top-inner">
                     <div class="top-left">
-                        <button id="mobile-menu-btn" class="icon-btn md:hidden" aria-label="Open sidebar">
+                        <button id="mobile-menu-btn" class="icon-btn" aria-label="Toggle sidebar">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
                                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -226,6 +246,15 @@
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
+                </div>
+            </div>
+            <div class="debug-search">
+                <div class="search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="debug-search-input" placeholder="Search logs...">
                 </div>
             </div>
             <div class="debug-filters">

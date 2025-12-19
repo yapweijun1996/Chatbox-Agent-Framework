@@ -129,7 +129,10 @@ describe('Agent', () => {
                 },
             });
 
-            expect(agent.getEventStream()).toBeDefined();
+            const stream = agent.getEventStream();
+            const runnerStream = (agent as any).runner.getEventStream();
+            expect(stream).toBeDefined();
+            expect(stream).toBe(runnerStream);
         });
     });
 });

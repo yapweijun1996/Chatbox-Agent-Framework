@@ -59,6 +59,7 @@ export class LMStudioProvider extends LLMProvider {
             messages: request.messages,
             temperature,
             stream: true,
+            stream_options: { include_usage: true },
             ...(request.topP && { top_p: request.topP }),
             ...(request.stopSequences && { stop: request.stopSequences }),
         };
@@ -78,6 +79,7 @@ export class LMStudioProvider extends LLMProvider {
                 throw new Error('No response body');
             const decoder = new TextDecoder();
             let buffer = '';
+            let reasoningOpen = false;
             while (true) {
                 const { done, value } = await reader.read();
                 if (done)
@@ -92,15 +94,37 @@ export class LMStudioProvider extends LLMProvider {
                             continue;
                         try {
                             const parsed = JSON.parse(data);
-                            const delta = parsed.choices[0]?.delta?.content;
+                            const contentDelta = parsed.choices[0]?.delta?.content;
+                            const reasoningDelta = parsed.choices[0]?.delta?.reasoning_content;
                             const finishReason = parsed.choices[0]?.finish_reason;
-                            if (delta) {
-                                yield { delta };
+                            if (reasoningDelta) {
+                                const prefix = reasoningOpen ? '' : '<think>';
+                                reasoningOpen = true;
+                                yield { delta: `${prefix}${reasoningDelta}` };
+                            }
+                            if (contentDelta) {
+                                const prefix = reasoningOpen ? '</think>' : '';
+                                reasoningOpen = false;
+                                yield { delta: `${prefix}${contentDelta}` };
                             }
                             if (finishReason) {
+                                if (reasoningOpen) {
+                                    reasoningOpen = false;
+                                    yield { delta: '</think>' };
+                                }
                                 yield {
                                     delta: '',
                                     finishReason: this.mapFinishReason(finishReason),
+                                };
+                            }
+                            if (parsed.usage) {
+                                yield {
+                                    delta: '',
+                                    usage: {
+                                        promptTokens: parsed.usage.prompt_tokens,
+                                        completionTokens: parsed.usage.completion_tokens,
+                                        totalTokens: parsed.usage.total_tokens,
+                                    }
                                 };
                             }
                         }
@@ -109,6 +133,9 @@ export class LMStudioProvider extends LLMProvider {
                         }
                     }
                 }
+            }
+            if (reasoningOpen) {
+                yield { delta: '</think>' };
             }
         }
         catch (error) {

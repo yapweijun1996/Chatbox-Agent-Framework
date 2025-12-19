@@ -9,10 +9,10 @@ import { z } from 'zod';
  */
 export const sqlQueryTool = {
     name: 'sql-query',
-    description: '执行 SQL 查询（仅支持 SELECT）',
+    description: 'Execute SQL SELECT queries on the database. Use this tool when the user wants to query data, list records, or get information from the database. Examples: "show all users", "list products", "get customer data".',
     inputSchema: z.object({
-        query: z.string().min(1, '查询语句不能为空'),
-        database: z.string().optional(),
+        query: z.string().min(1, 'Query cannot be empty').describe('The SQL SELECT query to execute'),
+        database: z.string().optional().describe('Optional database name'),
     }),
     outputSchema: z.object({
         rows: z.array(z.record(z.unknown())),
@@ -32,8 +32,9 @@ export const sqlQueryTool = {
         // 安全检查：仅允许 SELECT
         const normalizedQuery = query.trim().toUpperCase();
         if (!normalizedQuery.startsWith('SELECT')) {
-            throw new Error('仅支持 SELECT 查询，禁止 INSERT/UPDATE/DELETE 操作');
+            throw new Error('Only SELECT queries are allowed');
         }
+        console.log('[SQL-Query] Executing:', query);
         // 模拟查询延迟
         await new Promise(resolve => setTimeout(resolve, 100));
         // 返回模拟数据
@@ -53,10 +54,10 @@ export const sqlQueryTool = {
  */
 export const documentSearchTool = {
     name: 'document-search',
-    description: '搜索相关文档',
+    description: 'Search for documents and articles in the knowledge base. Use this tool when the user wants to find documentation, tutorials, guides, or articles. Examples: "find SQL optimization docs", "search for performance guide", "look up tutorial".',
     inputSchema: z.object({
-        keywords: z.array(z.string()).min(1, '至少需要一个关键词'),
-        limit: z.number().min(1).max(50).optional().default(10),
+        keywords: z.array(z.string()).min(1, 'At least one keyword required').describe('Keywords to search for'),
+        limit: z.number().min(1).max(50).optional().default(10).describe('Maximum number of results'),
     }),
     outputSchema: z.object({
         documents: z.array(z.object({

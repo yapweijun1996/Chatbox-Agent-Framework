@@ -224,6 +224,7 @@ export class Agent {
 
     registerTool(tool: Tool): void { this.toolRegistry.register(tool); }
     clearHistory(): void { this.conversationHistory = []; }
+    setHistory(history: ChatMessage[]): void { this.conversationHistory = [...history]; }
 }
 
 /** 创建 Agent 实例 */

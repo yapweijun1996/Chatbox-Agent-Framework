@@ -60,7 +60,6 @@ export class ToolRunnerNode extends BaseNode {
                 currentState = updateState(currentState, draft => {
                     draft.task.steps[draft.task.currentStepIndex].status = 'completed';
                     draft.task.steps[draft.task.currentStepIndex].result = '已完成';
-                    draft.task.currentStepIndex += 1;
                 });
 
                 events.push({
@@ -114,8 +113,6 @@ export class ToolRunnerNode extends BaseNode {
                     output: result.output,
                     timestamp: Date.now(),
                 });
-
-                draft.task.currentStepIndex += 1;
             });
 
             events.push({

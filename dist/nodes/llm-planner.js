@@ -1,14 +1,22 @@
 /**
  * Planner 节点（LLM 版本）
- * 使用 LM Studio 本地 LLM 生成任务计划
+ * 使用 LLM Provider 生成任务计划
  */
 import { BaseNode } from '../core/node';
 import { updateState, StateHelpers } from '../core/state';
 export class LLMPlannerNode extends BaseNode {
     toolRegistry;
-    constructor(toolRegistry) {
+    provider;
+    constructor(toolRegistry, config) {
         super('planner', 'LLM Planner');
         this.toolRegistry = toolRegistry;
+        this.provider = config?.provider;
+    }
+    /**
+     * 设置 LLM Provider（支持动态更新）
+     */
+    setProvider(provider) {
+        this.provider = provider;
     }
     async execute(state, context) {
         const events = [];
@@ -75,23 +83,74 @@ export class LLMPlannerNode extends BaseNode {
 2. 识别性能瓶颈和优化点
 3. 生成优化后的 SQL 语句
 4. 验证优化前后结果一致性`;
-        const prompt = `用户目标：${goal}
-
-请生成任务步骤：`;
+        const userPrompt = `用户目标：${goal}\n\n请生成任务步骤：`;
+        // 优先使用注入的 Provider
+        if (this.provider) {
+            return this.callWithProvider(systemPrompt, userPrompt, state, context);
+        }
+        // 回退：使用 ToolRegistry 中的 LLM 工具
+        return this.callWithToolRegistry(systemPrompt, userPrompt, state, context);
+    }
+    /**
+     * 使用 Provider 调用 LLM
+     */
+    async callWithProvider(systemPrompt, userPrompt, state, context) {
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+        ];
         const useStreaming = state.policy.useStreaming !== false;
-        // 调用 LLM 工具
+        if (useStreaming && context?.emitEvent) {
+            // 流式响应
+            let fullContent = '';
+            const stream = this.provider.chatStream({
+                messages,
+                temperature: 0.3,
+            });
+            for await (const chunk of stream) {
+                if (chunk.delta) {
+                    fullContent += chunk.delta;
+                    context.emitEvent('stream_chunk', 'info', 'generating plan...', { chunk: chunk.delta });
+                }
+            }
+            console.log('[LLMPlanner] LLM Raw Output:', fullContent);
+            return {
+                content: fullContent.trim(),
+                usage: undefined, // 流式模式通常不返回 usage
+            };
+        }
+        else {
+            // 非流式响应
+            const response = await this.provider.chat({
+                messages,
+                temperature: 0.3,
+            });
+            console.log('[LLMPlanner] LLM Raw Output:', response.content);
+            return {
+                content: response.content.trim(),
+                usage: response.usage,
+            };
+        }
+    }
+    /**
+     * 使用 ToolRegistry 调用 LLM（回退方案）
+     */
+    async callWithToolRegistry(systemPrompt, userPrompt, state, context) {
+        const useStreaming = state.policy.useStreaming !== false;
         const result = await this.toolRegistry.execute('lm-studio-llm', {
-            prompt,
+            prompt: userPrompt,
             systemPrompt,
-            temperature: 0.3, // 较低温度，保证输出稳定
+            temperature: 0.3,
             onStream: useStreaming ? (chunk) => {
                 context?.emitEvent('stream_chunk', 'info', 'generating plan...', { chunk });
             } : undefined
         });
         if (!result.success || !result.output) {
+            console.error('[LLMPlanner] ❌ LLM 调用失败');
             throw new Error('LLM 调用失败');
         }
         const output = result.output;
+        console.log('[LLMPlanner] LLM Raw Output:', output.content);
         return {
             content: output.content.trim(),
             usage: output.usage

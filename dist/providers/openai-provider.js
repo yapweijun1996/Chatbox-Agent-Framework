@@ -61,6 +61,7 @@ export class OpenAIProvider extends LLMProvider {
             messages: request.messages,
             temperature,
             stream: true,
+            stream_options: { include_usage: true },
             ...(request.topP && { top_p: request.topP }),
             ...(request.stopSequences && { stop: request.stopSequences }),
         };
@@ -104,6 +105,16 @@ export class OpenAIProvider extends LLMProvider {
                                 yield {
                                     delta: '',
                                     finishReason: this.mapFinishReason(finishReason),
+                                };
+                            }
+                            if (parsed.usage) {
+                                yield {
+                                    delta: '',
+                                    usage: {
+                                        promptTokens: parsed.usage.prompt_tokens,
+                                        completionTokens: parsed.usage.completion_tokens,
+                                        totalTokens: parsed.usage.total_tokens,
+                                    }
                                 };
                             }
                         }
