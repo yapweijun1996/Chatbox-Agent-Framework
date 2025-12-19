@@ -1,0 +1,47 @@
+# Source files
+src/
+tests/
+demo/
+
+# Configuration files
+tsconfig.json
+tsconfig.build.json
+vite.config.ts
+vitest.config.ts
+tailwind.config.js
+postcss.config.js
+
+# Documentation (keep only essential ones)
+docs/agent/
+.agent/
+
+# Development files
+*.log
+*.test.ts
+*.spec.ts
+.DS_Store
+.vscode/
+.idea/
+
+# Build artifacts (except dist)
+node_modules/
+coverage/
+.nyc_output/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Others
+*.tgz
+*.swp
+*.swo
+*~
+.env
+.env.*

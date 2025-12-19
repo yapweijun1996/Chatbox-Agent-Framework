@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbox Agent Framework</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Prevent FOUC: Set sidebar state before paint -->
+    <script>
+        (function () {
+            var isMobile = window.innerWidth < 768;
+            var savedState = localStorage.getItem('chatbox-sidebar-open');
+            var isOpen = savedState !== null ? savedState === 'true' : !isMobile;
+
+            // Set body class immediately for desktop collapsed state
+            if (!isMobile && !isOpen) {
+                document.documentElement.classList.add('sidebar-will-collapse');
+            }
+            // Set mobile closed state
+            if (isMobile && !isOpen) {
+                document.documentElement.classList.add('sidebar-will-hide');
+            }
+        })();
+    </script>
+    <style>
+        /* Instant state before CSS loads */
+        /* Desktop: Mimic .sidebar-collapsed state */
+        html.sidebar-will-collapse .sidebar {
+            width: 0 !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            border-right-color: transparent !important;
+        }
+
+        /* Mobile: Hidden by default */
+        html.sidebar-will-hide #sidebar {
+            transform: translateX(-100%) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <!-- Sidebar (History) -->
+        <aside id="sidebar" class="sidebar -translate-x-full md:translate-x-0 md:relative">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-mark">⚡</div>
+                    <div>
+                        <div class="brand-name">Chatbox</div>
+                        <div class="brand-subtitle">Agent Framework</div>
+                    </div>
+                </div>
+                <button id="toggle-sidebar-btn" class="icon-btn md:hidden" aria-label="Close sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="sidebar-cta">
+                <div class="cta-label">
+                    <span class="cta-dot"></span>
+                    Quick actions
+                </div>
+                <button id="new-chat-btn" class="new-chat-btn" type="button">
+                    <span class="icon-circle">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </span>
+                    <div class="new-chat-text">
+                        <span class="primary">New chat</span>
+                        <span class="secondary">Start a fresh thread</span>
+                    </div>
+                    <span class="new-chat-hotkey">⌘N</span>
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-label">
+                    <span>Today</span>
+                    <span class="section-hint">Autosave</span>
+                </div>
+                <div class="history-shell">
+                    <div id="history-list" class="history-list">
+                        <div class="history-item active">
+                            <span class="history-dot"></span>
+                            <span>Current Session</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user compact">
+                    <div class="user-avatar">U</div>
+                    <div>
+                        <div class="user-name">Workspace</div>
+                        <div class="user-plan">Synced profile</div>
+                    </div>
+                    <span class="user-status-dot" title="Online"></span>
+                </div>
+            </div>
+        </aside>
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+        <!-- Main Chat Area -->
+        <main class="chat-surface">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="top-inner">
+                    <div class="top-left">
+                        <button id="mobile-menu-btn" class="icon-btn" aria-label="Toggle sidebar">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="top-center">
+                        <button id="model-selector" class="model-chip" type="button">
+                            <span class="model-dot"></span>
+                            <div class="model-info">
+                                <div class="model-row">
+                                    <span class="model-label">Model</span>
+                                    <span class="model-latency" id="model-latency">-- ms</span>
+                                </div>
+                                <div class="model-row">
+                                    <span id="current-provider" class="model-name">LM Studio</span>
+                                    <span class="model-separator">•</span>
+                                    <span id="current-model" class="model-subtitle">Auto</span>
+                                </div>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="top-actions">
+                        <button id="stream-toggle-btn" class="pill-btn" title="Toggle Streaming" type="button">
+                            <span class="status-dot" id="stream-status-dot"></span>
+                            <span class="btn-text">Stream:</span>
+                            <span class="btn-status" id="stream-status-text">ON</span>
+                        </button>
+
+                        <button id="settings-btn" class="icon-btn" title="Settings" type="button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                </path>
+                            </svg>
+                        </button>
+
+                        <button id="toggle-debug-btn" class="pill-btn ghost" title="Toggle Debug Panel" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                            <span class="btn-text">Debug</span>
+                            <span id="debug-badge" class="pill-badge hidden">0</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Messages -->
+            <div id="chat-container" class="chat-scroll">
+                <div class="chat-background"></div>
+                <div id="welcome-screen" class="welcome-screen">
+                    <div class="welcome-mark">
+                        <div class="welcome-logo"></div>
+                    </div>
+                    <h2>What can I help you with?</h2>
+                    <p class="welcome-subtext">Start with an idea or pick a prompt to move faster.</p>
+                    <div class="prompt-grid">
+                        <button class="prompt-card" type="button"
+                            data-prompt="Give me a quick overview of the Chatbox Agent Framework and how it routes between chat and agent modes.">
+                            <div class="card-title">Explain this framework</div>
+                            <div class="card-desc">High-level summary of routing, streaming, and tools.</div>
+                        </button>
+                        <button class="prompt-card" type="button"
+                            data-prompt="Walk me through adding a new tool to the agent workflow with a short code example.">
+                            <div class="card-title">Show me how to extend tools</div>
+                            <div class="card-desc">Steps to register a new tool for the agent.</div>
+                        </button>
+                        <button class="prompt-card" type="button"
+                            data-prompt="Debug a failing agent step that cannot reach its tool and suggest fixes.">
+                            <div class="card-title">Debug an agent step</div>
+                            <div class="card-desc">Troubleshoot tool wiring and events.</div>
+                        </button>
+                        <button class="prompt-card" type="button"
+                            data-prompt="Generate an example conversation that uses the auto mode to decide when to call tools.">
+                            <div class="card-title">Sample conversation</div>
+                            <div class="card-desc">Demonstrate auto mode with tool calls.</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="messages-list" class="messages-list"></div>
+
+                <div id="typing-indicator" class="typing-indicator hidden">
+                    <div class="message-row ai">
+                        <div class="message-inner">
+                            <div class="message-avatar ai">
+                                <div class="avatar-mark"></div>
+                            </div>
+                            <div class="message-body typing-dots">
+                                <span class="typing-dot"></span><span class="typing-dot"></span><span
+                                    class="typing-dot"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-bottom-spacer"></div>
+            </div>
+
+            <!-- Scroll to Bottom Button -->
+            <button id="scroll-bottom-btn" class="scroll-bottom-btn hidden" type="button" aria-label="Scroll to bottom">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M19 12l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <!-- Input Area -->
+            <div class="composer-region">
+                <div class="composer-container">
+                    <div class="composer-toolbar">
+                        <div class="toolbar-left">
+                            <button id="prompt-library-btn" class="ghost-btn" type="button">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                                    <path d="M7 8h10M7 12h6M7 16h4"></path>
+                                </svg>
+                                Prompt Library
+                            </button>
+                        </div>
+                        <div class="toolbar-right">
+                            <span class="toolbar-pill">
+                                <span class="status-dot on"></span>
+                                Live workspace
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="prompt-library-panel" class="prompt-library hidden">
+                        <div class="prompt-library-header">
+                            <div>
+                                <div class="prompt-library-label">Prompt Library</div>
+                                <div class="prompt-library-sub">Insert a starter prompt</div>
+                            </div>
+                            <button id="close-prompt-library-btn" class="icon-btn xs" type="button"
+                                aria-label="Hide prompt library">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="prompt-library-grid">
+                            <button class="prompt-card" type="button"
+                                data-prompt="Summarize the latest conversation and outline next best actions to continue.">
+                                <div class="card-title">Summarize + next steps</div>
+                                <div class="card-desc">Create a tight recap and suggested follow-ups.</div>
+                            </button>
+                            <button class="prompt-card" type="button"
+                                data-prompt="Draft a user story for the next release with acceptance criteria and edge cases.">
+                                <div class="card-title">User story</div>
+                                <div class="card-desc">Template for product and QA alignment.</div>
+                            </button>
+                            <button class="prompt-card" type="button"
+                                data-prompt="Rewrite the previous response in a concise executive brief with bullet highlights.">
+                                <div class="card-title">Exec brief</div>
+                                <div class="card-desc">Trim to essentials for leadership updates.</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="composer-box">
+                        <textarea id="user-input" rows="1" placeholder="Message ChatGPT"
+                            class="composer-input"></textarea>
+                        <div class="composer-actions">
+                            <button id="attach-btn" class="icon-btn" title="Add attachment" type="button">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path
+                                        d="M21.44 11.05l-9.19 9.19a5 5 0 1 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                                    </path>
+                                </svg>
+                            </button>
+                            <button id="stop-btn" class="pill-btn danger hidden" type="button">
+                                <span class="status-dot on"></span>
+                                <span class="btn-text">Stop</span>
+                            </button>
+                            <button id="send-btn" class="send-btn" type="button" disabled>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="composer-hint" id="composer-hint">
+                        <span class="hint-text">ChatGPT can make mistakes. Check important info.</span>
+                        <button id="dismiss-hint-btn" class="hint-dismiss" type="button" aria-label="Dismiss hint">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Debug Drawer (Right Side) -->
+        <aside id="debug-drawer" class="debug-drawer translate-x-full">
+            <div class="debug-header">
+                <h3>Debug Console</h3>
+                <div class="debug-actions">
+                    <button id="clear-debug-btn" class="icon-btn" title="Clear all logs" aria-label="Clear debug logs">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                    <button id="close-debug-btn" class="icon-btn" aria-label="Close debug panel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="debug-search">
+                <div class="search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="debug-search-input" placeholder="Search logs...">
+                </div>
+            </div>
+            <div class="debug-filters">
+                <button class="filter-tab active" data-filter="all">
+                    All <span class="count">0</span>
+                </button>
+                <button class="filter-tab" data-filter="step">
+                    Steps <span class="count">0</span>
+                </button>
+                <button class="filter-tab" data-filter="event">
+                    Events <span class="count">0</span>
+                </button>
+                <button class="filter-tab" data-filter="error">
+                    Errors <span class="count">0</span>
+                </button>
+            </div>
+            <div class="debug-content">
+                <div class="debug-section">
+                    <div class="debug-section-header">
+                        <h4>Execution Steps</h4>
+                        <button id="export-btn" class="link-btn" type="button">Export</button>
+                    </div>
+                    <div id="steps-empty" class="debug-empty">No steps yet</div>
+                    <div id="steps-list" class="debug-list"></div>
+                </div>
+                <div class="debug-section">
+                    <div class="debug-section-header">
+                        <h4>Events</h4>
+                    </div>
+                    <div id="events-empty" class="debug-empty">Events will show here</div>
+                    <div id="events-container" class="debug-list"></div>
+                </div>
+            </div>
+        </aside>
+        <div id="debug-overlay" class="debug-overlay"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="settings-overlay"></div>
+        <div
+            class="relative bg-bg-sidebar rounded-xl shadow-2xl w-full max-w-lg mx-4 border border-white/10 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-white/10">
+                <h2 class="text-lg font-semibold text-text-primary">Settings</h2>
+                <button id="close-settings-btn" class="icon-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <!-- Provider Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-text-secondary mb-2">LLM Provider</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button data-provider="lm-studio"
+                            class="provider-btn p-3 rounded-lg border border-white/10 text-center hover:bg-white/5 transition-colors">
+                            <div class="text-2xl mb-1">🖥️</div>
+                            <div class="text-sm text-text-primary">LM Studio</div>
+                            <div class="text-xs text-text-tertiary">Local</div>
+                        </button>
+                        <button data-provider="gemini"
+                            class="provider-btn p-3 rounded-lg border border-white/10 text-center hover:bg-white/5 transition-colors">
+                            <div class="text-2xl mb-1">✨</div>
+                            <div class="text-sm text-text-primary">Gemini</div>
+                            <div class="text-xs text-text-tertiary">Google</div>
+                        </button>
+                        <button data-provider="openai"
+                            class="provider-btn p-3 rounded-lg border border-white/10 text-center hover:bg-white/5 transition-colors">
+                            <div class="text-2xl mb-1">🤖</div>
+                            <div class="text-sm text-text-primary">OpenAI</div>
+                            <div class="text-xs text-text-tertiary">GPT</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- LM Studio Settings -->
+                <div id="lm-studio-settings" class="provider-settings mb-4">
+                    <h3 class="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2">
+                        <span>🖥️</span> LM Studio Settings
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">Base URL</label>
+                            <input type="text" id="lm-studio-url" placeholder="http://127.0.0.1:6354"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">Model</label>
+                            <input type="text" id="lm-studio-model" list="lm-studio-model-history"
+                                placeholder="mistralai/ministral-3-14b-reasoning"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent">
+                            <datalist id="lm-studio-model-history"></datalist>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini Settings -->
+                <div id="gemini-settings" class="provider-settings hidden mb-4">
+                    <h3 class="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2">
+                        <span>✨</span> Gemini Settings
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">API Key</label>
+                            <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">Model</label>
+                            <select id="gemini-model"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent">
+                                <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp</option>
+                                <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OpenAI Settings -->
+                <div id="openai-settings" class="provider-settings hidden mb-4">
+                    <h3 class="text-sm font-medium text-text-secondary mb-3 flex items-center gap-2">
+                        <span>🤖</span> OpenAI Settings
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">API Key</label>
+                            <input type="password" id="openai-api-key" placeholder="Enter your OpenAI API key"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">Base URL (optional)</label>
+                            <input type="text" id="openai-base-url" placeholder="https://api.openai.com"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-text-tertiary mb-1">Model</label>
+                            <select id="openai-model"
+                                class="w-full bg-bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent">
+                                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                <option value="gpt-4o">gpt-4o</option>
+                                <option value="gpt-4-turbo">gpt-4-turbo</option>
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-white/10 flex justify-end gap-2">
+                <button id="cancel-settings-btn"
+                    class="px-4 py-2 rounded-lg text-sm text-text-secondary hover:bg-white/5 transition-colors">Cancel</button>
+                <button id="save-settings-btn"
+                    class="px-4 py-2 rounded-lg text-sm bg-accent text-white hover:bg-accent-hover transition-colors">Save
+                    Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="main.ts"></script>
+</body>
+
+</html>
