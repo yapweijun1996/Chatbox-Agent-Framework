@@ -22,7 +22,9 @@
 - ✅ 生成 Source Maps
 
 **构建脚本**
-- ✅ `npm run build:lib` - 构建库文件
+- ✅ `npm run build:bundle` - 构建单文件 Bundle
+- ✅ `npm run build:demo` - 构建 Demo
+- ✅ `npm run build:lib` - 构建类型定义
 - ✅ `npm run prepublishOnly` - 发布前自动测试和构建
 - ✅ `npm run preversion` - 版本更新前测试
 
@@ -36,7 +38,7 @@
 
 **专项文档**
 - ✅ `docs/PUBLISHING.md` - 详细发布流程
-- ✅ `docs/MEMORY_SYSTEM.md` - 记忆系统使用指南
+- ✅ `docs/MEMORY_SYSTEM.md` - 可选模块文档（非核心）
 - ✅ 现有的核心文档 (CORE_PRINCIPLES, CODING_STANDARDS 等)
 
 ### 4. **质量保证** ✅
@@ -70,10 +72,9 @@
 - ✅ .npmignore
 
 **构建产物**
-- ✅ dist/index.js
-- ✅ dist/index.d.ts
-- ✅ dist/**.js (所有模块)
-- ✅ dist/**.d.ts (所有类型定义)
+- ✅ dist/agent-framework.js
+- ✅ dist/agent-framework.js.map
+- ✅ dist/agent-framework.d.ts
 
 ## 📊 包统计信息
 
@@ -96,7 +97,8 @@ git status
 # 2. 运行测试
 npm run test:run
 
-# 3. 构建库
+# 3. 构建 Bundle + 类型
+npm run build:bundle
 npm run build:lib
 
 # 4. 运行发布检查
@@ -133,30 +135,9 @@ npm whoami
 
 ```
 dist/
-├── adapters/
-│   ├── indexeddb-adapter.d.ts
-│   └── indexeddb-adapter.js
-├── core/
-│   ├── abort-controller.{d.ts,js}
-│   ├── agent.{d.ts,js}
-│   ├── event-stream.{d.ts,js}
-│   ├── llm-provider.{d.ts,js}
-│   ├── llm-service/
-│   │   ├── cache.{d.ts,js}
-│   │   ├── service.{d.ts,js}
-│   │   ├── stats.{d.ts,js}
-│   │   └── ...
-│   ├── memory/
-│   │   ├── short-term.{d.ts,js}
-│   │   ├── long-term.{d.ts,js}
-│   │   ├── manager.{d.ts,js}
-│   │   └── ...
-│   └── ...
-├── nodes/
-├── providers/
-├── tools/
-├── index.d.ts
-└── index.js
+├── agent-framework.js
+├── agent-framework.js.map
+└── agent-framework.d.ts
 ```
 
 ## 📋 发布后任务

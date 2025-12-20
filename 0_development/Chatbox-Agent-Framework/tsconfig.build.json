@@ -5,12 +5,13 @@
         "rootDir": "./src",
         "declaration": true,
         "declarationMap": true,
+        "emitDeclarationOnly": true,
         "sourceMap": true,
         "removeComments": false,
         "declarationDir": "./dist"
     },
-    "include": [
-        "src/**/*"
+    "files": [
+        "src/agent-framework.ts"
     ],
     "exclude": [
         "src/**/*.test.ts",

@@ -7,6 +7,8 @@
 @import "./styles/chat.css";
 @import "./styles/composer.css";
 @import "./styles/debug.css";
+@import "./styles/memory.css";
+@import "./styles/dashboard.css";
 @import "./styles/utilities.css";
 @source "./**/*.{html,ts}";
 @source "../src/**/*.{html,ts}";

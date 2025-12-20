@@ -3,6 +3,7 @@
 > **Version**: 0.1.0 | **Last Updated**: 2025-12-19
 
 > **Note**: This document indexes the core agent guidelines. Please refer to the specific files for details.
+> **Scope**: The project focus is the Agent Framework core. Optional modules (e.g., memory, demo UI) are not part of the core bundle.
 
 ---
 
@@ -50,7 +51,7 @@ npm run build
 10. **Add integration tests** (236 tests passing) ✓
 11. **Add abort/resume functionality** - `AgentAbortController` ✓
 12. **Create `LLMService` abstraction layer** - 中间件、缓存、重试、统计 ✓
-13. **Add memory system** - 短期/长期记忆、语义搜索、自动整理 ✓
+13. **Add memory system (optional)** - 短期/长期记忆、语义搜索、自动整理 ✓
 14. **NPM package publishing preparation** - 构建配置、文档完善、版本管理 ✓
 
 ### 📅 Short-term

@@ -54,7 +54,7 @@
   "keywords": [
     "agent", "workflow", "ai-agent", "llm",
     "langgraph", "state-machine", "orchestration",
-    "tool-calling", "memory-system", "typescript"
+    "tool-calling", "typescript"
   ]
 }
 ```
@@ -78,15 +78,14 @@
 ✅ TypeScript 编译成功
 ✅ 类型定义生成完整 (.d.ts)
 ✅ Source Maps 生成
-✅ dist/ 目录结构正确
+✅ dist/ 输出单文件 Bundle
 ```
 
-**构建产物统计**:
-- 核心模块: 112 个文件
-- 节点实现: 24 个文件
-- Providers: 20 个文件
-- 工具: 16 个文件
-- 适配器: 4 个文件
+**构建产物**:
+- `dist/agent-framework.js`
+- `dist/agent-framework.js.map`
+- `dist/agent-framework.d.ts`
+- `demo/dist/index.html`
 
 ---
 

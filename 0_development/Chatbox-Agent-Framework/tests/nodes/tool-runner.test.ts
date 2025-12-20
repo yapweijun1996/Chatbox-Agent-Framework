@@ -129,6 +129,24 @@ describe('ToolRunnerNode', () => {
         expect(toolResultEvent?.status).toBe('success');
     });
 
+    it('should invoke tool hooks in context', async () => {
+        const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
+        let state = createState('Test task');
+        const onToolCall = vi.fn();
+        const onToolResult = vi.fn();
+
+        state = updateState(state, draft => {
+            draft.task.steps = [
+                { id: 'step-1', description: 'Test step', status: 'pending' }
+            ];
+        });
+
+        await runner.execute(state, { emitEvent: vi.fn(), onToolCall, onToolResult });
+
+        expect(onToolCall).toHaveBeenCalledTimes(1);
+        expect(onToolResult).toHaveBeenCalledTimes(1);
+    });
+
     it('should store tool results in artifacts', async () => {
         const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
         let state = createState('Test task');
@@ -179,6 +197,25 @@ describe('ToolRunnerNode', () => {
 
         expect(result.state.task.steps[0].status).toBe('completed');
         expect(result.state.task.currentStepIndex).toBe(0);
+    });
+
+    it('should block tools not allowed by policy', async () => {
+        const runner = new ToolRunnerNode(toolRegistry, { provider: mockProvider });
+        let state = createState('Test task');
+
+        state = updateState(state, draft => {
+            draft.policy.allowedTools = ['other-tool'];
+            draft.task.steps = [
+                { id: 'step-1', description: 'Restricted step', status: 'pending' }
+            ];
+        });
+
+        const result = await runner.execute(state);
+
+        expect(mockTool.execute).not.toHaveBeenCalled();
+        expect(result.state.task.steps[0].status).toBe('failed');
+        const toolResultEvent = result.events.find(e => e.type === 'tool_result');
+        expect(toolResultEvent?.status).toBe('warning');
     });
 
     it('should defer execution when tool requires confirmation', async () => {

@@ -89,7 +89,8 @@ npm version 0.2.0
 #### 4. 构建发布包
 
 ```bash
-# 构建库文件
+# 构建单文件 Bundle + 类型定义
+npm run build:bundle
 npm run build:lib
 
 # 检查 dist 目录
@@ -179,9 +180,9 @@ npm publish
 {
   "name": "agent-workflow-framework",
   "version": "0.1.0",
-  "main": "./dist/index.js",      // CommonJS 入口
-  "module": "./dist/index.js",    // ESM 入口
-  "types": "./dist/index.d.ts",   // TypeScript 类型定义
+  "main": "./dist/agent-framework.js",      // 单文件入口
+  "module": "./dist/agent-framework.js",    // ESM 入口
+  "types": "./dist/agent-framework.d.ts",   // TypeScript 类型定义
   "files": [                       // 包含的文件
     "dist",
     "README.md",
@@ -196,9 +197,9 @@ npm publish
 ```json
 {
   "scripts": {
-    "prepublishOnly": "npm run test:run && npm run build:lib",
+    "prepublishOnly": "npm run test:run && npm run build:bundle && npm run build:lib",
     "preversion": "npm run test:run",
-    "version": "npm run build:lib && git add -A",
+    "version": "npm run build:bundle && npm run build:lib && git add -A",
     "postversion": "git push && git push --tags"
   }
 }
@@ -242,7 +243,7 @@ const provider = createLLMProvider({
     model: 'test-model',
 });
 
-const agent = createAgent({ llmProvider: provider });
+const agent = createAgent({ provider });
 ```
 
 ```bash
@@ -280,7 +281,7 @@ npx package-size ./
 - [ ] 版本号已更新 (`npm version`)
 - [ ] CHANGELOG 已更新
 - [ ] README 准确反映当前功能
-- [ ] 构建成功 (`npm run build:lib`)
+- [ ] 构建成功 (`npm run build`)
 - [ ] 检查脚本通过 (`node scripts/check-publish.js`)
 - [ ] Git 工作区干净
 - [ ] 已登录 NPM (`npm whoami`)

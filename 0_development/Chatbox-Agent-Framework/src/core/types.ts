@@ -76,7 +76,10 @@ export interface Policy {
     maxRetries: number; // 最大重试次数
     allowedTools?: string[]; // 允许的工具白名单
     permissions: Record<string, boolean>; // 权限控制
+    roles?: string[]; // RBAC 角色
     useStreaming?: boolean; // 是否启用流式输出（默认 true）
+    memoryEnabled?: boolean; // 是否启用记忆（默认由配置决定）
+    planAndExecute?: boolean; // 是否启用 Plan-and-Execute 循环优化
 }
 
 /** 统一状态容器 */
@@ -101,11 +104,15 @@ export type EventType =
     | 'node_end'
     | 'tool_call'
     | 'tool_result'
+    | 'memory_save'
+    | 'memory_recall'
+    | 'audit'
     | 'confirmation_required'
     | 'confirmation_result'
     | 'error'
     | 'retry'
     | 'checkpoint'
+    | 'health_metrics'
     | 'budget_warning'
     | 'budget_exceeded'
     | 'stream_chunk'
@@ -142,6 +149,8 @@ export interface Node {
 /** 节点执行上下文 */
 export interface NodeContext {
     emitEvent: (type: EventType, status: Event['status'], summary: string, payload?: unknown) => void;
+    onToolCall?: (toolName: string, input: unknown) => void | Promise<void>;
+    onToolResult?: (toolName: string, output: unknown) => void | Promise<void>;
 }
 
 // ============================================================================
@@ -164,17 +173,42 @@ export interface Tool {
     timeout: number; // 超时时间（ms）
     retryPolicy: RetryPolicy;
     permissions: string[]; // 所需权限
+    permissionsMode?: 'all' | 'any';
+    allowedRoles?: string[];
+    deniedRoles?: string[];
     requiresConfirmation?: boolean; // 是否需要人工确认
     confirmationMessage?: string; // 确认提示文本
     allowedNodes?: string[]; // 允许调用的节点白名单
+    execution?: {
+        mode?: 'main' | 'child-process' | 'worker';
+        modulePath?: string;
+        exportName?: string;
+        workerScript?: string;
+        resourceLimits?: {
+            maxOldGenerationSizeMb?: number;
+            maxYoungGenerationSizeMb?: number;
+            codeRangeSizeMb?: number;
+            stackSizeMb?: number;
+        };
+        childProcessExecArgv?: string[];
+    };
     execute(input: unknown, context?: ToolContext): Promise<unknown>; // 更新：增加 context 参数
 }
 
 /** 工具执行上下文 */
 export interface ToolContext {
-    onStream?: (chunk: string) => void; // 流式回调
+    onStream?: (chunk: ToolStreamChunk) => void; // 流式回调
     signal?: AbortSignal; // 中断信号
 }
+
+/** 工具流式输出块 */
+export type ToolStreamChunk =
+    | string
+    | {
+        type: 'text' | 'json';
+        content: string;
+        data?: unknown;
+    };
 
 /** 待确认的工具调用 */
 export interface PendingToolCall {
@@ -254,17 +288,44 @@ export interface Checkpoint {
 
 export type EdgeCondition = (state: State) => boolean;
 
-export interface Edge {
+export type ParallelMergeOrder = 'defined' | 'sorted';
+export type ParallelMergeConflictStrategy = 'last-write-wins';
+
+export interface ParallelMergeStrategy {
+    order?: ParallelMergeOrder;
+    conflict?: ParallelMergeConflictStrategy;
+}
+
+export interface SequentialEdge {
     from: string;
     to: string;
-    condition?: EdgeCondition; // 条件边（用于分支）
+    type?: 'sequential';
 }
+
+export interface ConditionalEdge {
+    from: string;
+    to: string;
+    condition: EdgeCondition; // 条件边（用于分支）
+    type?: 'conditional';
+}
+
+export interface ParallelEdge {
+    from: string;
+    to: string[];
+    join: string;
+    type: 'parallel';
+}
+
+export type Edge = SequentialEdge | ConditionalEdge | ParallelEdge;
 
 export interface GraphDefinition {
     nodes: Node[];
     edges: Edge[];
     entryNode: string;
     maxSteps: number; // 最大执行步数（防止无限循环）
+    hooks?: RunnerHooks;
+    conditionErrorStrategy?: 'false' | 'throw';
+    parallelMerge?: ParallelMergeStrategy;
 }
 
 // ============================================================================

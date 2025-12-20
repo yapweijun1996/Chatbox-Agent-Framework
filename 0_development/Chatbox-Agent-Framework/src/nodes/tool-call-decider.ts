@@ -27,7 +27,7 @@ export async function decideToolCall(
 
     const providerConfig = options.providerConfig;
     if (providerConfig?.baseURL) {
-        return decideWithFetch(toolRegistry, stepDescription, providerConfig.baseURL, providerConfig.model);
+        return decideWithFetch(toolRegistry, stepDescription, providerConfig.baseURL, providerConfig.model || 'default-model');
     }
 
     return decideWithFetch(toolRegistry, stepDescription, 'http://127.0.0.1:6354', 'zai-org/glm-4.6v-flash');

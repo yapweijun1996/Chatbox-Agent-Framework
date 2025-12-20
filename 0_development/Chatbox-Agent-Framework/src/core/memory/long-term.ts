@@ -12,6 +12,12 @@ import type {
     EmbeddingGenerator,
     MemoryImportance,
 } from './types';
+import { InMemoryPersistenceAdapter } from './persistence/in-memory-adapter';
+import type { MemoryPruningConfig, MemorySummarizer } from './pruning';
+import { DEFAULT_MEMORY_PRUNING_CONFIG, SimpleMemorySummarizer } from './pruning';
+import { toPlainText } from './utils';
+
+const DEFAULT_SUMMARY_LENGTH = 200;
 
 /**
  * 生成唯一 ID
@@ -31,122 +37,24 @@ function getImportanceLevel(score: number): MemoryImportance {
 }
 
 /**
- * 简单的内存持久化适配器（用于测试或无持久化需求场景）
- */
-export class InMemoryPersistenceAdapter implements MemoryPersistenceAdapter {
-    private storage: Map<string, LongTermMemoryItem> = new Map();
-
-    async save<T>(memory: LongTermMemoryItem<T>): Promise<void> {
-        this.storage.set(memory.id, memory as LongTermMemoryItem);
-    }
-
-    async saveBatch<T>(memories: LongTermMemoryItem<T>[]): Promise<void> {
-        for (const memory of memories) {
-            await this.save(memory);
-        }
-    }
-
-    async get<T>(id: string): Promise<LongTermMemoryItem<T> | null> {
-        return (this.storage.get(id) as LongTermMemoryItem<T>) || null;
-    }
-
-    async query<T>(options: MemoryQueryOptions = {}): Promise<LongTermMemoryItem<T>[]> {
-        let items = Array.from(this.storage.values()) as LongTermMemoryItem<T>[];
-
-        // 过滤
-        if (options.minImportance !== undefined) {
-            items = items.filter(item => item.metadata.importance >= options.minImportance!);
-        }
-
-        if (options.tags && options.tags.length > 0) {
-            items = items.filter(item =>
-                item.metadata.tags?.some(tag => options.tags!.includes(tag))
-            );
-        }
-
-        // 排序
-        const sortBy = options.sortBy || 'importance';
-        const sortOrder = options.sortOrder || 'desc';
-        items.sort((a, b) => {
-            let compareValue = 0;
-            switch (sortBy) {
-                case 'createdAt':
-                    compareValue = a.metadata.createdAt - b.metadata.createdAt;
-                    break;
-                case 'lastAccessedAt':
-                    compareValue = a.metadata.lastAccessedAt - b.metadata.lastAccessedAt;
-                    break;
-                case 'importance':
-                    compareValue = a.metadata.importance - b.metadata.importance;
-                    break;
-                case 'accessCount':
-                    compareValue = a.metadata.accessCount - b.metadata.accessCount;
-                    break;
-            }
-            return sortOrder === 'asc' ? compareValue : -compareValue;
-        });
-
-        if (options.limit) {
-            items = items.slice(0, options.limit);
-        }
-
-        return items;
-    }
-
-    async semanticSearch<T>(options: SemanticSearchOptions): Promise<LongTermMemoryItem<T>[]> {
-        // 简单实现：如果查询是字符串，进行文本匹配
-        if (typeof options.query === 'string') {
-            const queryLower = options.query.toLowerCase();
-            let items = Array.from(this.storage.values()) as LongTermMemoryItem<T>[];
-
-            items = items.filter(item => {
-                const contentStr = JSON.stringify(item.content).toLowerCase();
-                const summaryStr = item.summary?.toLowerCase() || '';
-                return contentStr.includes(queryLower) || summaryStr.includes(queryLower);
-            });
-
-            // 应用其他过滤条件
-            const queryOptions: MemoryQueryOptions = {
-                limit: options.limit,
-                minImportance: options.minImportance,
-                tags: options.tags,
-                sortBy: options.sortBy || 'importance',
-                sortOrder: options.sortOrder || 'desc',
-            };
-
-            return this.query(queryOptions);
-        }
-
-        // 如果是向量查询，需要计算相似度（此处简化返回空）
-        return [];
-    }
-
-    async delete(id: string): Promise<boolean> {
-        return this.storage.delete(id);
-    }
-
-    async clear(): Promise<void> {
-        this.storage.clear();
-    }
-
-    async count(): Promise<number> {
-        return this.storage.size;
-    }
-}
-
-/**
  * 长期记忆存储类
  */
 export class LongTermMemoryStore implements LongTermMemory {
     private adapter: MemoryPersistenceAdapter;
     private embeddingGen?: EmbeddingGenerator;
+    private summarizer: MemorySummarizer;
+    private pruningConfig: MemoryPruningConfig;
 
     constructor(
         adapter?: MemoryPersistenceAdapter,
-        embeddingGenerator?: EmbeddingGenerator
+        embeddingGenerator?: EmbeddingGenerator,
+        summarizer?: MemorySummarizer,
+        pruningConfig?: Partial<MemoryPruningConfig>
     ) {
         this.adapter = adapter || new InMemoryPersistenceAdapter();
         this.embeddingGen = embeddingGenerator;
+        this.summarizer = summarizer || new SimpleMemorySummarizer();
+        this.pruningConfig = { ...DEFAULT_MEMORY_PRUNING_CONFIG, ...pruningConfig };
     }
 
     /**
@@ -166,17 +74,16 @@ export class LongTermMemoryStore implements LongTermMemory {
         const importance = options.importance ?? 0.5;
 
         // 生成摘要
-        let summary = options.summary;
-        if (!summary && typeof content === 'string') {
-            summary = content.slice(0, 200);
-        } else if (!summary) {
-            summary = JSON.stringify(content).slice(0, 200);
-        }
+        const summary = options.summary ?? this.createSummary(content);
 
         // 生成嵌入向量
         let embedding: number[] | undefined;
         if (this.embeddingGen && summary) {
-            embedding = await this.embeddingGen.generateEmbedding(summary);
+            try {
+                embedding = await this.embeddingGen.generateEmbedding(summary);
+            } catch (err) {
+                console.error('[LongTermMemory] Embedding generation failed:', err);
+            }
         }
 
         const memory: LongTermMemoryItem<T> = {
@@ -196,13 +103,16 @@ export class LongTermMemoryStore implements LongTermMemory {
             },
         };
 
-        await this.adapter.save(memory);
+        try {
+            await this.adapter.save(memory);
+        } catch (err) {
+            console.error('[LongTermMemory] Save failed:', err);
+            throw new Error(`Failed to save memory: ${err instanceof Error ? err.message : String(err)}`);
+        }
+
         return id;
     }
 
-    /**
-     * 获取记忆
-     */
     async get<T>(id: string): Promise<LongTermMemoryItem<T> | null> {
         const memory = await this.adapter.get<T>(id);
         if (memory) {
@@ -214,16 +124,10 @@ export class LongTermMemoryStore implements LongTermMemory {
         return memory;
     }
 
-    /**
-     * 查询记忆
-     */
     async query<T>(options: MemoryQueryOptions = {}): Promise<LongTermMemoryItem<T>[]> {
         return this.adapter.query<T>(options);
     }
 
-    /**
-     * 语义搜索
-     */
     async search<T>(
         query: string,
         options: Partial<SemanticSearchOptions> = {}
@@ -256,29 +160,48 @@ export class LongTermMemoryStore implements LongTermMemory {
             throw new Error(`Memory with id ${id} not found`);
         }
 
+        let resolvedSummary = updates.summary;
+        let resolvedEmbedding = updates.embedding;
+
+        if (updates.content !== undefined && resolvedSummary === undefined) {
+            resolvedSummary = this.createSummary(updates.content);
+        }
+
+        if (resolvedSummary !== undefined && this.embeddingGen && resolvedEmbedding === undefined) {
+            resolvedEmbedding = await this.embeddingGen.generateEmbedding(resolvedSummary);
+        }
+
+        const mergedMetadata = {
+            ...existing.metadata,
+            ...updates.metadata,
+        };
+
+        if (updates.metadata?.importance !== undefined && updates.metadata.importanceLevel === undefined) {
+            mergedMetadata.importanceLevel = getImportanceLevel(mergedMetadata.importance);
+        }
+
         const updated: LongTermMemoryItem<T> = {
             ...existing,
             ...updates,
             id: existing.id, // 保持 ID 不变
-            metadata: {
-                ...existing.metadata,
-                ...updates.metadata,
-            },
+            metadata: mergedMetadata,
         };
+
+        if (resolvedSummary !== undefined) {
+            updated.summary = resolvedSummary;
+        }
+
+        if (resolvedEmbedding !== undefined) {
+            updated.embedding = resolvedEmbedding;
+        }
 
         await this.adapter.save(updated);
     }
 
-    /**
-     * 删除记忆
-     */
     async delete(id: string): Promise<boolean> {
         return this.adapter.delete(id);
     }
 
-    /**
-     * 清空所有记忆
-     */
     async clear(): Promise<void> {
         await this.adapter.clear();
     }
@@ -292,22 +215,98 @@ export class LongTermMemoryStore implements LongTermMemory {
 
         // 移除低重要性且访问次数少的记忆
         const toRemove: string[] = [];
+        const remaining: LongTermMemoryItem[] = [];
+
         for (const memory of memories) {
             if (memory.metadata.importance < 0.3 && memory.metadata.accessCount < 2) {
                 toRemove.push(memory.id);
+            } else {
+                remaining.push(memory);
             }
         }
 
-        // 批量删除
         for (const id of toRemove) {
             await this.adapter.delete(id);
         }
+
+        await this.pruneMemories(remaining);
     }
 
-    /**
-     * 获取记忆总数
-     */
     async count(): Promise<number> {
         return this.adapter.count();
+    }
+
+    private createSummary(content: unknown): string {
+        const text = toPlainText(content);
+        if (text.length <= DEFAULT_SUMMARY_LENGTH) return text;
+        return text.slice(0, DEFAULT_SUMMARY_LENGTH);
+    }
+
+    private shouldPrune<T>(memory: LongTermMemoryItem<T>, now: number): boolean {
+        if (!this.pruningConfig.enabled) return false;
+
+        // Don't prune important memories
+        if (this.pruningConfig.minImportanceToPreserve !== undefined
+            && memory.metadata.importance >= this.pruningConfig.minImportanceToPreserve) {
+            return false;
+        }
+
+        // Don't prune recently accessed memories
+        if (this.pruningConfig.minAgeMs !== undefined
+            && now - memory.metadata.lastAccessedAt < this.pruningConfig.minAgeMs) {
+            return false;
+        }
+
+        // Only prune if content is long enough
+        const contentText = toPlainText(memory.content);
+        if (contentText.length < this.pruningConfig.minContentLength) return false;
+
+        // Only prune if summary can be further compressed
+        const summaryText = memory.summary ?? contentText;
+        if (summaryText.length <= this.pruningConfig.maxSummaryLength) return false;
+
+        return true;
+    }
+
+    private async pruneMemories<T>(memories: LongTermMemoryItem<T>[]): Promise<void> {
+        if (!this.pruningConfig.enabled) return;
+
+        const now = Date.now();
+        const updated: LongTermMemoryItem<T>[] = [];
+        const maxItems = this.pruningConfig.maxItemsPerRun ?? memories.length;
+        let processed = 0;
+
+        for (const memory of memories) {
+            if (processed >= maxItems) break;
+            if (!this.shouldPrune(memory, now)) continue;
+
+            const summary = await this.summarizer.summarize(memory.content, {
+                maxLength: this.pruningConfig.maxSummaryLength,
+                existingSummary: memory.summary,
+            });
+
+            const trimmed = summary.trim();
+            if (!trimmed || trimmed === memory.summary) continue;
+
+            const normalized = trimmed.length > this.pruningConfig.maxSummaryLength
+                ? trimmed.slice(0, this.pruningConfig.maxSummaryLength)
+                : trimmed;
+
+            const updatedMemory: LongTermMemoryItem<T> = {
+                ...memory,
+                summary: normalized,
+            };
+
+            if (this.embeddingGen && normalized) {
+                updatedMemory.embedding = await this.embeddingGen.generateEmbedding(normalized);
+            }
+
+            updated.push(updatedMemory);
+            processed++;
+        }
+
+        if (updated.length > 0) {
+            await this.adapter.saveBatch(updated);
+        }
     }
 }

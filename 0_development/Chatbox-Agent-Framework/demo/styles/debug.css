@@ -2,9 +2,7 @@
 
 .debug-drawer {
     width: var(--width-drawer);
-    background:
-        linear-gradient(180deg, rgba(16, 20, 30, 0.9) 0%, rgba(10, 14, 20, 0.96) 100%),
-        var(--color-bg-drawer);
+    background: rgba(16, 20, 30, 0.98);
     border-left: 1px solid var(--color-border-color);
     position: absolute;
     top: 0;
@@ -14,15 +12,15 @@
     z-index: 30;
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(24px) saturate(170%);
-    box-shadow: -18px 0 50px rgba(4, 6, 10, 0.55);
+    /* backdrop-filter: blur(10px) saturate(140%); */
+    /* box-shadow: -18px 0 50px rgba(4, 6, 10, 0.55); */
 }
 
 .debug-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(7, 10, 16, 0.6);
-    backdrop-filter: blur(6px);
+    background: rgba(7, 10, 16, 0.75);
+    /* backdrop-filter: blur(6px); */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -49,8 +47,8 @@
     padding: 0 14px;
     padding-top: env(safe-area-inset-top);
     border-bottom: 1px solid var(--color-border-color);
-    background: rgba(16, 20, 30, 0.7);
-    backdrop-filter: blur(10px);
+    background: rgba(16, 20, 30, 0.85);
+    /* backdrop-filter: blur(10px); */
 }
 
 .debug-header h3 {
@@ -176,6 +174,61 @@
     gap: 10px;
 }
 
+.graph-viewer {
+    border: 1px solid var(--color-border-color);
+    border-radius: 12px;
+    padding: 8px;
+    background: rgba(12, 16, 24, 0.6);
+    overflow-x: auto;
+}
+
+.graph-svg {
+    color: rgba(148, 163, 184, 0.6);
+}
+
+.graph-edge {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+}
+
+.graph-edge-conditional {
+    stroke-dasharray: 4 4;
+}
+
+.graph-node-rect {
+    fill: rgba(15, 23, 42, 0.85);
+    stroke: rgba(148, 163, 184, 0.4);
+    stroke-width: 1.2;
+}
+
+.graph-node-label {
+    fill: var(--color-text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-family-sans);
+}
+
+.graph-node[data-status='running'] .graph-node-rect {
+    fill: rgba(56, 189, 248, 0.18);
+    stroke: rgba(56, 189, 248, 0.7);
+}
+
+.graph-node[data-status='success'] .graph-node-rect {
+    fill: rgba(34, 197, 94, 0.18);
+    stroke: rgba(34, 197, 94, 0.7);
+}
+
+.graph-node[data-status='failure'] .graph-node-rect {
+    fill: rgba(239, 68, 68, 0.18);
+    stroke: rgba(239, 68, 68, 0.7);
+}
+
+.graph-node[data-status='warning'] .graph-node-rect {
+    fill: rgba(251, 191, 36, 0.18);
+    stroke: rgba(251, 191, 36, 0.7);
+}
+
 .debug-step-item,
 .debug-event {
     background: rgba(15, 19, 28, 0.6);
@@ -296,7 +349,7 @@
 .status-running {
     background: var(--color-status-info);
     box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
-    animation: pulse-blue 2s infinite;
+    /* animation: pulse-blue 2s infinite; */
 }
 
 .status-completed {

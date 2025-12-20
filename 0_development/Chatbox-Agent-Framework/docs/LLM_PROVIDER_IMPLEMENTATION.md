@@ -21,7 +21,7 @@
 - ✅ `examples/llm-provider-example.ts` - 6个使用示例
 
 ### 4. 项目集成
-- ✅ 更新 `src/index.ts` 导出新 API
+- ✅ 更新 `src/agent-framework.ts` 导出新 API
 - ✅ 标记旧版 Tool API 为"逐步废弃"
 - ✅ 向后兼容现有代码
 
@@ -70,7 +70,7 @@ src/
 ├── core/
 │   └── llm-provider.ts          # 核心抽象接口
 ├── providers/
-│   ├── index.ts                 # 统一导出
+│   ├── agent-framework.ts       # 核心导出
 │   ├── openai-provider.ts       # OpenAI 实现
 │   ├── gemini-provider.ts       # Gemini 实现
 │   ├── lm-studio-provider.ts    # LM Studio 实现
@@ -131,7 +131,7 @@ for await (const chunk of provider.chatStream({ messages })) {
 ### 长期规划
 7. **更多 Provider**: Claude, Llama, Mistral 等
 8. **Prompt Templates**: 内置常用提示词模板
-9. **Agent Memory**: 与 State 深度整合的长期记忆
+9. **Workflow Templates**: 内置常用工作流模板
 
 ---
 

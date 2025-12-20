@@ -1,5 +1,7 @@
 # 记忆系统使用指南
 
+> 注意：记忆系统是可选模块，不属于核心 Agent Framework Bundle，仅在需要时启用。
+
 Chatbox-Agent-Framework 提供了完整的记忆系统，支持短期和长期记忆管理。
 
 ## 📋 快速开始
@@ -136,6 +138,17 @@ const adapter = new InMemoryPersistenceAdapter();
 const memory = createMemoryManager({}, adapter);
 ```
 
+### IndexedDB adapter (browser)
+
+```typescript
+import { IndexedDBMemoryAdapter, createMemoryManager } from 'agent-workflow-framework';
+
+const adapter = new IndexedDBMemoryAdapter();
+const memory = createMemoryManager({ persistenceAdapter: adapter });
+```
+
+Note: requires an environment with IndexedDB (browser or worker).
+
 ### 自定义持久化适配器
 
 ```typescript
@@ -196,7 +209,22 @@ const memory = createMemoryManager({
 });
 ```
 
-### 4. 清理过期数据
+### 4. Memory pruning (summary compression)
+
+```typescript
+import { createMemoryManager, SimpleMemorySummarizer, DEFAULT_MEMORY_PRUNING_CONFIG } from 'agent-workflow-framework';
+
+const memory = createMemoryManager({
+    summarizer: new SimpleMemorySummarizer(),
+    pruningConfig: {
+        ...DEFAULT_MEMORY_PRUNING_CONFIG,
+        maxSummaryLength: 120,
+        minAgeMs: 0,
+    },
+});
+```
+
+### 5. 清理过期数据
 
 ```typescript
 // 短期记忆会自动过期
@@ -294,4 +322,4 @@ console.log('记忆统计:', memory.getStats());
 ## 🎓 了解更多
 
 - 查看 [源码](../src/core/memory/) 了解实现细节
-- 查看 [测试用例](../tests/core/memory.test.ts) 了解更多使用示例
+- 查看 [测试用例](../tests/core/memory/) 了解更多使用示例

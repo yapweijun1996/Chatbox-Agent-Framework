@@ -24,6 +24,8 @@ export interface ChatRequest {
     topP?: number;
     stopSequences?: string[];
     stream?: boolean;
+    /** AbortSignal for canceling the request */
+    signal?: AbortSignal;
 }
 
 /**

@@ -69,6 +69,7 @@ Debug Bundle 是框架导出的完整调试信息，包含 State、事件流、c
     "shortTerm": {},
     "longTermKeys": []
   },
+  /* memory 字段仅在启用可选记忆模块时出现 */
   "artifacts": {
     "toolResults": [
       {

@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "description": "Production-grade JS Agent Workflow Framework with Planning, Tool Orchestration, State Management, and Error Recovery",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/agent-framework.js",
+  "module": "./dist/agent-framework.js",
+  "types": "./dist/agent-framework.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/agent-framework.d.ts",
+      "import": "./dist/agent-framework.js"
     }
   },
   "files": [
@@ -20,15 +20,17 @@
   ],
   "scripts": {
     "dev": "vite demo",
-    "build": "tsc && vite build",
+    "build": "npm run build:bundle && npm run build:demo",
+    "build:bundle": "node scripts/build-bundle.mjs",
+    "build:demo": "vite build demo",
     "build:lib": "tsc --project tsconfig.build.json",
     "test": "vitest",
     "test:run": "vitest --run",
     "test:coverage": "vitest --coverage",
     "lint": "tsc --noEmit",
-    "prepublishOnly": "npm run test:run && npm run build:lib",
+    "prepublishOnly": "npm run test:run && npm run build:bundle && npm run build:lib",
     "preversion": "npm run test:run",
-    "version": "npm run build:lib && git add -A",
+    "version": "npm run build:bundle && npm run build:lib && git add -A",
     "postversion": "git push && git push --tags"
   },
   "keywords": [
@@ -40,7 +42,6 @@
     "state-machine",
     "orchestration",
     "tool-calling",
-    "memory-system",
     "typescript",
     "framework"
   ],
@@ -61,6 +62,8 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^20.10.0",
     "autoprefixer": "^10.4.23",
+    "esbuild": "^0.24.0",
+    "fake-indexeddb": "^6.2.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.3.0",

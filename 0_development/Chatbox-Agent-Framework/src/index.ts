@@ -30,9 +30,55 @@ export { BaseNode } from './core/node';
 
 // 执行器
 export { GraphRunner } from './core/runner';
+export { toMermaid, toMermaidWithState } from './core/graph-visualizer';
+export { LiveDebugger } from './core/live-debugger';
+export {
+    DistributedExecutor,
+    InMemoryTaskQueue,
+    InMemoryCheckpointStore,
+    DistributedWorkerPool,
+    InMemoryTaskQueueStore,
+    PersistentTaskQueue,
+    PersistentTaskQueueFactory,
+    type TaskQueueFactory,
+    type TaskQueueStore,
+    type DistributedCheckpointStore,
+    type DistributedTask,
+    type DistributedTaskResult,
+    type TaskQueue,
+} from './core/distributed-execution';
+export { IndexedDBTaskQueueStore } from './core/persistence/indexeddb-task-queue-store';
 
 // Agent 核心类
 export { Agent, createAgent, type AgentConfig, type AgentResult, type ChatOptions, type AgentMode, type ProviderConfigInput } from './core/agent';
+export {
+    LLMIntentRouter,
+    RuleBasedIntentRouter,
+    type IntentDecision,
+    type IntentMemoryPolicy,
+    type IntentMode,
+    type IntentRouter,
+    type IntentRouterContext,
+    type IntentToolPolicy,
+} from './core/intent-router';
+export {
+    MultiAgentOrchestrator,
+    RuleBasedMultiAgentRouter,
+    LLMultiAgentRouter,
+    type AgentClient,
+    type AgentDescriptor,
+    type MultiAgentDecision,
+    type MultiAgentRouter,
+    type MultiAgentRouterContext,
+    type MultiAgentTask,
+    type MultiAgentTaskResult,
+} from './core/multi-agent';
+export {
+    AgentCoordinator,
+} from './core/agent-coordinator';
+export {
+    CrewCoordinator,
+} from './core/crew-collaboration';
 
 // Abort/Resume 控制
 export {
@@ -51,6 +97,18 @@ export {
     importDebugBundle,
     type DebugBundle,
 } from './core/debug-bundle';
+export {
+    createEventStreamAuditLogger,
+    type AuditEntry,
+    type AuditLogger,
+    type AuditStatus,
+} from './core/audit';
+export {
+    resolvePermissions,
+    resolveRoles,
+    type RBACContext,
+    type RBACPolicy,
+} from './core/rbac';
 
 // 节点实现
 export { PlannerNode } from './nodes/planner';
@@ -60,6 +118,7 @@ export { ConfirmationNode, type ConfirmationNodeConfig } from './nodes/confirmat
 export { VerifierNode } from './nodes/verifier';
 export { ResponderNode } from './nodes/responder';
 export { LLMResponderNode, type LLMResponderNodeConfig } from './nodes/llm-responder';
+export { MemoryNode, type MemoryNodeConfig } from './nodes/memory';
 
 // 示例工具
 export { sqlQueryTool, documentSearchTool, getExampleTools } from './tools/example-tools';
@@ -143,13 +202,26 @@ export {
     ShortTermMemoryStore,
     LongTermMemoryStore,
     InMemoryPersistenceAdapter,
+    IndexedDBMemoryAdapter,
     MemoryManagerImpl,
     createMemoryManager,
     SimpleTFIDFEmbedding,
     OpenAIEmbedding,
     cosineSimilarity,
+    SimpleMemorySummarizer,
+    applyChatMemoryRecallPolicy,
+    DEFAULT_CHAT_MEMORY_RECALL_POLICY,
+    DEFAULT_CHAT_MEMORY_SAVE_POLICY,
+    formatChatMemories,
+    saveChatMemoryTurn,
+    DEFAULT_INTENT_PATTERNS,
+    DEFAULT_PREFERENCE_PATTERNS,
+    extractIntentMemory,
+    isPreferenceStatement,
+    normalizeMemoryContent,
     // 默认配置
     DEFAULT_MEMORY_CONFIG,
+    DEFAULT_MEMORY_PRUNING_CONFIG,
     // 类型
     type MemoryImportance,
     type MemoryMetadata,
@@ -160,8 +232,14 @@ export {
     type SemanticSearchOptions,
     type MemoryPersistenceAdapter,
     type EmbeddingGenerator,
+    type MemorySummarizer,
+    type MemoryPruningConfig,
+    type MemorySummaryOptions,
     type LongTermMemory,
     type MemoryManagerConfig,
     type MemoryStats,
     type MemoryManager,
+    type ChatMemoryMessageRole,
+    type ChatMemoryRecallPolicy,
+    type ChatMemorySavePolicy,
 } from './core/memory';

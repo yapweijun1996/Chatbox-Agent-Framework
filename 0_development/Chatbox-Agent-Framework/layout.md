@@ -1,6 +1,7 @@
 # Chatbox Demo UI / UX 布局概览
 
 本文帮助工程师快速理解当前 Demo 的界面结构、控件分布与交互逻辑，便于后续迭代或重构。
+本布局仅覆盖 Demo UI，与核心 Agent Framework 逻辑解耦，记忆相关抽屉为可选展示。
 
 ## 1. 整体框架
 
@@ -33,7 +34,8 @@
 - **右侧按钮**：
   1. `Stream` pill 开关，切换是否使用流式响应，并更新全局状态。
   2. `Settings`（齿轮）打开 Modal。
-  3. `<>`（双箭头）打开/关闭 Debug Drawer。
+  3. `Memory`（数据库图标）打开/关闭 Memory Drawer。
+  4. `<>`（双箭头）打开/关闭 Debug Drawer。
 
 ### 3.2 欢迎屏 & Prompt 卡片
 
@@ -68,6 +70,18 @@
      - `Export` 按钮导出当前日志。
   4. **Events** (`#events-container`)：显示 `agent.getEventStream()` 推送的事件摘要。
 - Actions：`Clear` 清空日志，`X` 关闭抽屉。
+
+## 8. Memory Drawer（可选）
+
+- 默认隐藏在右侧，通过 Top Bar 的 Memory 按钮滑入。
+- 顶部提供搜索、短期/长期筛选、刷新、整理（Consolidate）。
+- 支持新增记忆条目、删除、提升短期记忆到长期、清空分区。
+
+## 9. Dashboard Drawer
+
+- 默认隐藏在右侧，通过 Top Bar 的 Dashboard 按钮滑入。
+- 展示 Session Metrics（耗时、tokens、tool calls、errors）与 Audit/Memory 计数。
+- 通过事件流实时更新数值。
 
 ## 5. 设置 Modal（Provider 配置）
 

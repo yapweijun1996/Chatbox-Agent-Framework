@@ -43,6 +43,7 @@ export function createState(goal: string, policy?: Partial<Policy>): State {
             maxRetries: 3,
             permissions: {},
             useStreaming: true, // 默认启用流式
+            planAndExecute: false,
             ...policy,
         },
         createdAt: now,

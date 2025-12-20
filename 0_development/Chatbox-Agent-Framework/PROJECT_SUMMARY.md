@@ -12,7 +12,7 @@
 
 ## 🏗️ 架构总览
 
-### 核心模块 (9个)
+### 核心模块 (8个)
 
 ```
 src/core/
@@ -23,8 +23,7 @@ src/core/
 ├── error-handler.ts   # 错误处理（248 行）
 ├── abort-controller.ts# 中断控制（217 行）
 ├── llm-provider.ts    # LLM 抽象（159 行）
-├── llm-service/       # LLM 服务层（5个文件，~1400行）
-└── memory/            # 记忆系统（5个文件，~1200行）
+└── llm-service/       # LLM 服务层（5个文件，~1400行）
 ```
 
 ### 节点实现 (6个)
@@ -78,33 +77,14 @@ src/providers/
 - 速率限制
 - 统计收集
 
-### 3. 记忆系统 ✅
-
-**短期记忆**
-- 键值对存储
-- TTL 自动过期
-- LRU 容量管理
-- 重要性评分
-
-**长期记忆**
-- 持久化接口
-- 语义搜索
-- 嵌入向量
-- 自动整理
-
-**记忆管理器**
-- 智能提升
-- 定期整理
-- 统计追踪
-
-### 4. 工具编排 ✅
+### 3. 工具编排 ✅
 
 - 动态工具注册
 - Schema 验证
 - 执行追踪
 - 错误处理
 
-### 5. 多 Provider 支持 ✅
+### 4. 多 Provider 支持 ✅
 
 - OpenAI
 - Google Gemini
@@ -127,7 +107,6 @@ src/providers/
 | Error Handler | 10 | ✅ |
 | Abort Controller | 28 | ✅ |
 | LLM Service | 34 | ✅ |
-| Memory System | 49 | ✅ |
 | Schema Utils | 12 | ✅ |
 | Nodes (各类) | 32 | ✅ |
 | Integration E2E | 38 | ✅ |
@@ -154,7 +133,6 @@ src/providers/
 
 ### 专项文档 ✅
 
-- [x] docs/MEMORY_SYSTEM.md - 记忆系统指南
 - [x] docs/PUBLISHING.md - NPM 发布指南
 - [x] docs/agent/CORE_PRINCIPLES.md - 核心原则
 - [x] docs/agent/CODING_STANDARDS.md - 编码标准
@@ -176,13 +154,13 @@ src/providers/
 {
   "name": "agent-workflow-framework",
   "version": "0.1.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/agent-framework.js",
+  "types": "./dist/agent-framework.d.ts",
   "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "keywords": [
     "agent", "workflow", "ai-agent", "llm",
     "langgraph", "state-machine", "orchestration",
-    "tool-calling", "memory-system", "typescript"
+    "tool-calling", "typescript"
   ]
 }
 ```
@@ -191,18 +169,20 @@ src/providers/
 
 ```
 dist/
-├── core/          # 核心模块（112 文件）
-├── nodes/         # 工作流节点（24 文件）
-├── providers/     # LLM Providers（20 文件）
-├── tools/         # 示例工具（16 文件）
-├── adapters/      # 适配器（4 文件）
-├── index.js       # 主入口
-└── index.d.ts     # 类型定义
+├── agent-framework.js    # 单文件 Bundle
+├── agent-framework.js.map
+└── agent-framework.d.ts  # 类型定义
+```
+
+```
+demo/dist/
+└── index.html             # Demo 构建产物
 ```
 
 ### 发布脚本 ✅
 
-- `npm run build:lib` - 构建库
+- `npm run build:bundle` - 构建单文件 Bundle
+- `npm run build:demo` - 构建 Demo
 - `npm run test:run` - 运行测试
 - `npm run prepublishOnly` - 发布前检查
 - `node scripts/check-publish.js` - 完整性检查
@@ -284,7 +264,6 @@ dist/
 
 - [ ] 可视化调试工具
 - [ ] 多 Agent 协作
-- [ ] 增强的长期记忆（Vector DB）
 - [ ] 更多 LLM Provider（Claude, Cohere）
 
 ### 长期 (v1.0.0)
@@ -308,7 +287,6 @@ dist/
 
 1. [核心原则](./docs/agent/CORE_PRINCIPLES.md)
 2. [编码标准](./docs/agent/CODING_STANDARDS.md)
-3. [记忆系统指南](./docs/MEMORY_SYSTEM.md)
 
 ### 进阶主题
 
@@ -326,7 +304,7 @@ dist/
 - ✅ **100% 类型安全**
 - ✅ **5,200+ 行** 生产级代码
 - ✅ **10+ 篇** 详细文档
-- ✅ **3 大核心系统** (Agent, LLM Service, Memory)
+- ✅ **2 大核心系统** (Agent, LLM Service)
 - ✅ **0 个** 已知 Bug
 
 ### 质量标准

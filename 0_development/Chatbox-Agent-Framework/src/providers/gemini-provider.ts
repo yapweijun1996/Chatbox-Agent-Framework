@@ -46,6 +46,15 @@ export class GeminiProvider extends LLMProvider {
         };
 
         try {
+            // Combine user signal with timeout
+            const timeoutSignal = AbortSignal.timeout(this.config.timeout || 60000);
+            const controller = new AbortController();
+
+            // Abort if either signal fires
+            const onAbort = () => controller.abort();
+            request.signal?.addEventListener('abort', onAbort);
+            timeoutSignal.addEventListener('abort', onAbort);
+
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateContent?key=${this.apiKey}`,
                 {
@@ -54,9 +63,12 @@ export class GeminiProvider extends LLMProvider {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(requestBody),
-                    signal: AbortSignal.timeout(this.config.timeout || 60000),
+                    signal: controller.signal,
                 }
             );
+
+            // Cleanup listeners
+            request.signal?.removeEventListener('abort', onAbort);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -117,6 +129,7 @@ export class GeminiProvider extends LLMProvider {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(requestBody),
+                    signal: request.signal, // Pass through the abort signal for streaming
                 }
             );
 

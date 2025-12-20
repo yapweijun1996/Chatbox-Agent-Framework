@@ -42,14 +42,26 @@ export class LMStudioProvider extends LLMProvider {
         };
 
         try {
+            // Combine user signal with timeout
+            const timeoutSignal = AbortSignal.timeout(this.config.timeout || 60000);
+            const controller = new AbortController();
+
+            // Abort if either signal fires
+            const onAbort = () => controller.abort();
+            request.signal?.addEventListener('abort', onAbort);
+            timeoutSignal.addEventListener('abort', onAbort);
+
             const response = await fetch(`${this.baseURL}/v1/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(requestBody),
-                signal: AbortSignal.timeout(this.config.timeout || 60000),
+                signal: controller.signal,
             });
+
+            // Cleanup listeners
+            request.signal?.removeEventListener('abort', onAbort);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -103,6 +115,7 @@ export class LMStudioProvider extends LLMProvider {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(requestBody),
+                signal: request.signal, // Pass through the abort signal for streaming
             });
 
             if (!response.ok) {
@@ -123,6 +136,12 @@ export class LMStudioProvider extends LLMProvider {
             let reasoningOpen = false;
 
             while (true) {
+                // Check if abort was requested
+                if (request.signal?.aborted) {
+                    await reader.cancel();
+                    break;
+                }
+
                 const { done, value } = await reader.read();
                 if (done) break;
 

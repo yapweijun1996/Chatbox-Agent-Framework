@@ -161,7 +161,7 @@ describe('ModuleName', () => {
  * @example
  * ```typescript
  * const agent = createAgent({
- *     llmProvider: provider,
+ *     provider,
  *     mode: 'chat',
  * });
  * ```
@@ -219,8 +219,8 @@ npm run dev
 # 运行测试（watch 模式）
 npm test
 
-# 构建
-npm run build:lib
+# 构建（单文件 Bundle + Demo）
+npm run build
 ```
 
 ### 调试

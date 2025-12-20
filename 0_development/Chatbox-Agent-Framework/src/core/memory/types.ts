@@ -3,6 +3,9 @@
  * 定义短期和长期记忆的结构与接口
  */
 
+import type { MemoryPruningConfig, MemorySummarizer } from './pruning';
+import { DEFAULT_MEMORY_PRUNING_CONFIG } from './pruning';
+
 // ============================================================================
 // 基础类型
 // ============================================================================
@@ -203,6 +206,9 @@ export interface LongTermMemory {
 
     /** 整理记忆（压缩、归档） */
     consolidate(): Promise<void>;
+
+    /** 获取记忆总数 */
+    count(): Promise<number>;
 }
 
 // ============================================================================
@@ -221,6 +227,10 @@ export interface MemoryManagerConfig {
     persistenceAdapter?: MemoryPersistenceAdapter;
     /** 嵌入生成器 */
     embeddingGenerator?: EmbeddingGenerator;
+    /** 记忆摘要器 */
+    summarizer?: MemorySummarizer;
+    /** 记忆压缩配置 */
+    pruningConfig?: Partial<MemoryPruningConfig>;
     /** 是否启用自动整理 */
     autoConsolidate: boolean;
     /** 自动整理间隔（毫秒） */
@@ -260,7 +270,7 @@ export interface MemoryManager {
         importance?: number;
         ttl?: number;
         tags?: string[];
-    }): Promise<string> | string;
+    }): Promise<string>;
 
     /** 回忆信息（从短期和长期记忆中搜索） */
     recall<T>(query: string | MemoryQueryOptions): Promise<MemoryItem<T>[]>;
@@ -269,7 +279,7 @@ export interface MemoryManager {
     promoteToLongTerm(shortTermKey: string): Promise<string | null>;
 
     /** 获取统计信息 */
-    getStats(): MemoryStats;
+    getStats(): Promise<MemoryStats>;
 
     /** 清理过期记忆 */
     cleanup(): Promise<void>;
@@ -287,4 +297,7 @@ export const DEFAULT_MEMORY_CONFIG: MemoryManagerConfig = {
     autoConsolidate: true,
     consolidateIntervalMs: 60 * 60 * 1000, // 1 小时
     importanceThreshold: 0.3,
+    pruningConfig: DEFAULT_MEMORY_PRUNING_CONFIG,
 };
+
+export type { MemoryPruningConfig, MemorySummarizer, MemorySummaryOptions } from './pruning';

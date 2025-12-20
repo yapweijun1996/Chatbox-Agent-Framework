@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> Scope note: the core release focuses on the Agent Framework. Optional modules (e.g., memory) are outside the core bundle.
+
 ## [0.1.0] - 2025-12-19
 
 ### 🎉 Initial Release
@@ -33,12 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ 统计收集
 - ✅ 10+ 内置中间件
 
-**记忆系统 (v0.1)**
-- ✅ 短期记忆 (键值对存储、TTL、LRU 淘汰)
-- ✅ 长期记忆 (持久化接口、语义搜索)
-- ✅ 记忆管理器 (智能提升、自动整理)
-- ✅ 嵌入生成器 (SimpleTFIDF、OpenAI)
-- ✅ 访问统计和重要性评分
+**可选模块 (v0.1)**
+- ✅ 记忆系统 (可选启用)
 
 **中断/恢复**
 - ✅ AgentAbortController
@@ -65,7 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **文档**
 - ✅ README.md
 - ✅ API 文档
-- ✅ 记忆系统指南
 - ✅ 核心原则文档
 - ✅ 编码标准
 - ✅ 常见模式
@@ -96,7 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned Features
 
 - [ ] 工具结果流式传输
-- [ ] 增强的长期记忆持久化 (Vector DB)
 - [ ] 多 Agent 协作
 - [ ] 高级规划算法 (ReAct, Plan-and-Solve)
 - [ ] 更多 LLM Provider (Claude, Cohere, etc.)
@@ -117,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Release Notes by Version
 
 #### [0.1.0] - Initial Public Release
-首次公开发布，包含核心 Agent 系统、LLM 服务层和记忆系统。
+首次公开发布，包含核心 Agent 系统与 LLM 服务层。
 
 ---
 

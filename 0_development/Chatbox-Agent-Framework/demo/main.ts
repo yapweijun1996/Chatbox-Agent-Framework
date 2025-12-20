@@ -2,11 +2,21 @@
  * Demo Main Entry Point - 精简版本
  */
 
-import { createAgent, Agent, type AgentResult } from '../src/index';
+import {
+    createAgent,
+    Agent,
+    type AgentResult,
+    createMemoryManager,
+    IndexedDBMemoryAdapter,
+    SimpleTFIDFEmbedding,
+    SimpleMemorySummarizer,
+    DEFAULT_MEMORY_PRUNING_CONFIG,
+} from '../src/index';
 import { getExampleTools } from '../src/tools/example-tools';
 import type { LLMSettings } from './settings';
 import { store } from './state';
 import { UIController } from './ui';
+import type { MemoryCreatePayload, MemoryScope, MemorySnapshot } from './ui/memory-panel-types';
 
 // ============================================================================
 // Application State
@@ -14,6 +24,17 @@ import { UIController } from './ui';
 
 let agent: Agent;
 const ui = new UIController();
+const memoryAdapter = new IndexedDBMemoryAdapter();
+const memoryEmbedding = new SimpleTFIDFEmbedding(128);
+const memory = createMemoryManager(
+    {
+        persistenceAdapter: memoryAdapter,
+        summarizer: new SimpleMemorySummarizer(),
+        pruningConfig: DEFAULT_MEMORY_PRUNING_CONFIG,
+    },
+    undefined,
+    memoryEmbedding
+);
 
 // ============================================================================
 // Initialization
@@ -21,6 +42,7 @@ const ui = new UIController();
 
 async function init() {
     setupCallbacks();
+    setupMemoryCallbacks();
     await store.init();
     initializeAgent();
     updateUIFromState();
@@ -51,6 +73,91 @@ function setupCallbacks() {
         onConversationDelete: deleteConversation,
         onConversationRename: renameConversation,
     });
+}
+
+function setupMemoryCallbacks() {
+    ui.setMemoryCallbacks({
+        onRefresh: fetchMemorySnapshot,
+        onAdd: addMemoryEntry,
+        onDelete: deleteMemoryEntry,
+        onPromote: promoteMemoryEntry,
+        onClear: clearMemoryScope,
+        onConsolidate: consolidateMemory,
+    });
+}
+
+async function fetchMemorySnapshot(query?: string): Promise<MemorySnapshot> {
+    const normalized = query?.trim().toLowerCase() || '';
+    const shortItems = memory.shortTerm.query({
+        sortBy: 'lastAccessedAt',
+        sortOrder: 'desc',
+    });
+
+    const filteredShort = normalized
+        ? shortItems.filter(item => matchesQuery(item, normalized))
+        : shortItems;
+
+    const longItems = normalized
+        ? await memory.longTerm.search(normalized, { limit: 200 })
+        : await memory.longTerm.query({ sortBy: 'lastAccessedAt', sortOrder: 'desc', limit: 200 });
+
+    return {
+        shortTerm: filteredShort,
+        longTerm: longItems,
+    };
+}
+
+function matchesQuery(item: { content: unknown; metadata: { tags?: string[] } }, query: string): boolean {
+    const contentText = toPlainText(item.content).toLowerCase();
+    const tagText = (item.metadata.tags || []).join(' ').toLowerCase();
+    return contentText.includes(query) || tagText.includes(query);
+}
+
+function toPlainText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+}
+
+async function addMemoryEntry(payload: MemoryCreatePayload): Promise<void> {
+    const tags = payload.tags.length > 0 ? payload.tags : undefined;
+    const options = { importance: payload.importance, tags };
+
+    if (payload.scope === 'long') {
+        await Promise.resolve(memory.remember(payload.content, { ...options, longTerm: true }));
+        return;
+    }
+
+    const key = `stm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    memory.shortTerm.set(key, payload.content, options);
+}
+
+async function deleteMemoryEntry(scope: MemoryScope, id: string): Promise<void> {
+    if (scope === 'short') {
+        memory.shortTerm.delete(id);
+        return;
+    }
+    await memory.longTerm.delete(id);
+}
+
+async function promoteMemoryEntry(id: string): Promise<void> {
+    await memory.promoteToLongTerm(id);
+}
+
+async function clearMemoryScope(scope: MemoryScope): Promise<void> {
+    if (scope === 'short') {
+        memory.shortTerm.clear();
+        return;
+    }
+    await memory.longTerm.clear();
+}
+
+async function consolidateMemory(): Promise<void> {
+    await memory.consolidate();
 }
 
 function createProviderConfig(settings: LLMSettings) {
@@ -89,6 +196,19 @@ function initializeAgent() {
         mode: 'auto',
         systemPrompt: 'You are a helpful AI assistant. Respond in the same language as the user.',
         streaming: state.isStreamEnabled,
+        memory: memory,
+        enableMemory: true,
+        enableChatMemory: true,
+        chatMemorySavePolicy: {
+            saveUserPreferences: true,
+            saveConversationTurns: true,
+            saveIntentMessages: true,
+            minMessageLength: 10,
+        },
+        chatMemoryRecallPolicy: {
+            limit: 5,
+            minImportance: 0.7,
+        },
         confirmTool: async (request) => {
             const message = [
                 request.confirmationMessage || 'Tool execution requires confirmation.',
@@ -106,6 +226,7 @@ function initializeAgent() {
     agent.getEventStream().on('*', (event: any) => {
         ui.addDebugEvent(event);
     });
+    ui.setGraphDefinition(agent.getGraphDefinition() ?? null);
 
     console.log('[Demo] Agent initialized with provider:', providerConfig.type);
     store.setState({ lastLatencyMs: null, lastTokenCount: null });
@@ -169,6 +290,22 @@ async function handleSend(text: string) {
             if (lastMsg && lastMsg.role === 'assistant') {
                 lastMsg.content = finalContent;
                 agent.setHistory(updatedHistory);
+            }
+
+            // Save interrupted conversation to memory for context
+            if (finalContent) {
+                try {
+                    await memory.remember(
+                        { user: text, assistant: finalContent, interrupted: true },
+                        {
+                            tags: ['conversation-turn', 'interrupted'],
+                            importance: 0.6,
+                            longTerm: false,
+                        }
+                    );
+                } catch (error) {
+                    console.warn('[Demo] Failed to save interrupted conversation to memory:', error);
+                }
             }
         }
 

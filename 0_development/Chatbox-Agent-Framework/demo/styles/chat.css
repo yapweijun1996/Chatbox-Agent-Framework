@@ -13,13 +13,14 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
+    background: transparent;
+    /* background:
         radial-gradient(circle at 16% 12%, rgba(45, 212, 191, 0.16), transparent 34%),
         radial-gradient(circle at 82% 12%, rgba(56, 189, 248, 0.12), transparent 30%),
         radial-gradient(circle at 50% 78%, rgba(245, 158, 11, 0.06), transparent 42%),
-        linear-gradient(180deg, rgba(14, 18, 26, 0.92) 0%, rgba(10, 13, 20, 0.97) 55%, rgba(8, 10, 15, 1) 100%);
+        linear-gradient(180deg, rgba(14, 18, 26, 0.92) 0%, rgba(10, 13, 20, 0.97) 55%, rgba(8, 10, 15, 1) 100%); */
     opacity: 0.9;
-    mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.9), transparent 85%);
+    /* mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.9), transparent 85%); */
 }
 
 .messages-list {
@@ -70,15 +71,11 @@
 }
 
 .message-row.user {
-    background:
-        linear-gradient(180deg, rgba(27, 36, 51, 0.6) 0%, rgba(20, 27, 39, 0.35) 100%),
-        var(--color-bg-user-msg);
+    background: var(--color-bg-user-msg);
 }
 
 .message-row.ai {
-    background:
-        linear-gradient(180deg, rgba(19, 24, 36, 0.72) 0%, rgba(14, 18, 27, 0.55) 100%),
-        var(--color-bg-ai-msg);
+    background: var(--color-bg-ai-msg);
 }
 
 .message-row.thinking {
@@ -91,18 +88,18 @@
     display: flex;
     gap: 14px;
     padding: 22px 24px;
-    background: rgba(15, 19, 28, 0.8);
+    background: rgba(15, 19, 28, 0.95);
     border: 1px solid var(--color-border-color);
     border-radius: 18px;
-    box-shadow: 0 16px 40px rgba(5, 8, 12, 0.45);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    /* box-shadow: 0 16px 40px rgba(5, 8, 12, 0.45); */
+    transition: border-color 0.25s ease, background 0.25s ease;
 }
 
 .message-row:hover .message-inner {
-    transform: translateY(-2px);
+    /* transform: translateY(-2px); */
     border-color: var(--color-border-strong);
-    background: rgba(18, 24, 36, 0.88);
-    box-shadow: 0 20px 44px rgba(4, 6, 10, 0.55);
+    background: rgba(18, 24, 36, 0.95);
+    /* box-shadow: 0 20px 44px rgba(4, 6, 10, 0.55); */
 }
 
 .message-avatar {
@@ -117,8 +114,8 @@
 }
 
 .message-avatar.ai {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-soft));
-    box-shadow: 0 12px 32px rgba(45, 212, 191, 0.3);
+    background: var(--color-accent);
+    /* box-shadow: 0 12px 32px rgba(45, 212, 191, 0.3); */
 }
 
 .message-avatar.ai .avatar-mark {
@@ -130,8 +127,8 @@
 }
 
 .message-avatar.user {
-    background: linear-gradient(135deg, #60a5fa, var(--color-accent-cool));
-    box-shadow: 0 12px 32px rgba(56, 189, 248, 0.25);
+    background: #60a5fa;
+    /* box-shadow: 0 12px 32px rgba(56, 189, 248, 0.25); */
 }
 
 .message-body {

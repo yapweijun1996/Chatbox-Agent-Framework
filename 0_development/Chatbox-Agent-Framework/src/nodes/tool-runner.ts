@@ -4,7 +4,7 @@
  */
 
 import { BaseNode } from '../core/node';
-import type { NodeContext, NodeResult, PendingToolCall, State, TaskStep } from '../core/types';
+import type { NodeContext, NodeResult, PendingToolCall, State, TaskStep, ToolStreamChunk } from '../core/types';
 import { updateState, StateHelpers } from '../core/state';
 import type { ToolRegistry } from '../core/tool-registry';
 import type { LLMProvider } from '../core/llm-provider';
@@ -68,7 +68,12 @@ export class ToolRunnerNode extends BaseNode {
                         nodeId: this.id,
                         status: 'warning',
                         summary: `工具 ${pendingCall.toolName} 已被拒绝`,
-                        metadata: { toolName: pendingCall.toolName, reason: pendingCall.decisionReason },
+                        metadata: {
+                            toolName: pendingCall.toolName,
+                            stepId: pendingCall.stepId,
+                            reason: pendingCall.decisionReason,
+                            success: false,
+                        },
                     });
                     return this.createResult(currentState, events);
                 }
@@ -102,6 +107,47 @@ export class ToolRunnerNode extends BaseNode {
                     nodeId: this.id,
                     status: 'info',
                     summary: `步骤 "${currentStep.description}" 无需工具调用`,
+                });
+
+                return this.createResult(currentState, events);
+            }
+
+            if (
+                currentState.policy.allowedTools
+                && currentState.policy.allowedTools.length > 0
+                && !currentState.policy.allowedTools.includes(toolCall.toolName)
+            ) {
+                currentState = updateState(currentState, draft => {
+                    const step = draft.task.steps[draft.task.currentStepIndex];
+                    if (step) {
+                        step.status = 'failed';
+                        step.error = `Tool "${toolCall.toolName}" is not allowed by policy.`;
+                    }
+                    delete draft.task.pendingToolCall;
+                });
+
+                events.push({
+                    id: `evt-${Date.now()}`,
+                    timestamp: Date.now(),
+                    type: 'tool_result',
+                    nodeId: this.id,
+                    status: 'warning',
+                    summary: `工具 ${toolCall.toolName} 被策略禁止`,
+                    metadata: {
+                        toolName: toolCall.toolName,
+                        stepId: currentStep.id,
+                        success: false,
+                        reason: 'policy',
+                    },
+                });
+                context?.emitEvent('audit', 'warning', 'tool_policy_block', {
+                    toolName: toolCall.toolName,
+                    stepId: currentStep.id,
+                    reason: 'policy',
+                });
+                await context?.onToolResult?.(toolCall.toolName, {
+                    success: false,
+                    error: 'policy',
                 });
 
                 return this.createResult(currentState, events);
@@ -184,16 +230,28 @@ export class ToolRunnerNode extends BaseNode {
             nodeId: this.id,
             status: 'info',
             summary: `调用工具: ${toolCall.toolName}`,
-            metadata: { toolName: toolCall.toolName, input: toolCall.input },
+            metadata: {
+                toolName: toolCall.toolName,
+                stepId: currentStep.id,
+                input: toolCall.input,
+            },
         });
+        context?.emitEvent('audit', 'info', 'tool_call', {
+            toolName: toolCall.toolName,
+            stepId: currentStep.id,
+        });
+        await context?.onToolCall?.(toolCall.toolName, toolCall.input);
 
         const useStreaming = currentState.policy.useStreaming !== false;
         const onStream = useStreaming && context?.emitEvent
-            ? (chunk: string) => {
+            ? (chunk: ToolStreamChunk) => {
+                const normalized = normalizeToolStreamChunk(chunk);
                 context.emitEvent('stream_chunk', 'info', `tool stream: ${toolCall.toolName}`, {
                     toolName: toolCall.toolName,
                     stepId: currentStep.id,
-                    chunk,
+                    chunk: normalized.content,
+                    raw: normalized.raw,
+                    chunkType: normalized.type,
                 });
             }
             : undefined;
@@ -202,11 +260,36 @@ export class ToolRunnerNode extends BaseNode {
         const result = await this.toolRegistry.execute(toolCall.toolName, toolCall.input, {
             nodeId: this.id,
             permissions: currentState.policy.permissions,
+            roles: currentState.policy.roles,
             onStream,
         });
         const duration = Date.now() - startTime;
 
         if (!result.success) {
+            context?.emitEvent('audit', 'failure', 'tool_result', {
+                toolName: toolCall.toolName,
+                stepId: currentStep.id,
+                success: false,
+                error: result.error,
+            });
+            await context?.onToolResult?.(toolCall.toolName, {
+                success: false,
+                error: result.error,
+            });
+            events.push({
+                id: `evt-${Date.now()}`,
+                timestamp: Date.now(),
+                type: 'tool_result',
+                nodeId: this.id,
+                status: 'failure',
+                summary: `工具 ${toolCall.toolName} 执行失败`,
+                metadata: {
+                    toolName: toolCall.toolName,
+                    stepId: currentStep.id,
+                    success: false,
+                    error: result.error,
+                },
+            });
             throw createError(ErrorType.EXECUTION, result.error || '工具执行失败', {
                 nodeId: this.id,
                 toolName: toolCall.toolName,
@@ -241,10 +324,37 @@ export class ToolRunnerNode extends BaseNode {
             nodeId: this.id,
             status: 'success',
             summary: `工具 ${toolCall.toolName} 执行成功 (${duration}ms)`,
-            metadata: { duration, toolName: toolCall.toolName },
+            metadata: {
+                durationMs: duration,
+                toolName: toolCall.toolName,
+                stepId: currentStep.id,
+                success: true,
+            },
+        });
+        context?.emitEvent('audit', 'success', 'tool_result', {
+            toolName: toolCall.toolName,
+            stepId: currentStep.id,
+            success: true,
+            durationMs: duration,
+        });
+        await context?.onToolResult?.(toolCall.toolName, {
+            success: true,
+            output: result.output,
+            durationMs: duration,
         });
 
         return this.createResult(currentState, events);
     }
 
+}
+
+function normalizeToolStreamChunk(chunk: ToolStreamChunk): { content: string; type: 'text' | 'json'; raw?: unknown } {
+    if (typeof chunk === 'string') {
+        return { content: chunk, type: 'text' };
+    }
+    return {
+        content: chunk.content,
+        type: chunk.type,
+        raw: chunk.data,
+    };
 }

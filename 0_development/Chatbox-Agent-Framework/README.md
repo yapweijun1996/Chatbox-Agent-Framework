@@ -4,12 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen.svg)](https://github.com/yapweijun1996/Chatbox-Agent-Framework)
 
-一个生产级的 JavaScript/TypeScript AI Agent 工作流框架，提供规划、工具编排、状态管理和错误恢复等核心功能。
+一个生产级的 JavaScript/TypeScript AI Agent 工作流框架，聚焦于规划、工具编排、状态管理和错误恢复等核心能力。
 
 ## ✨ 特性
 
 - 🤖 **智能 Agent 系统** - 支持 chat/agent/auto 三种运行模式
-- 🧠 **记忆系统** - 短期/长期记忆管理，支持语义搜索
 - 🔧 **LLM 服务层** - 中间件、缓存、重试、统计等高级功能
 - 🛠️ **工具编排** - 动态工具注册和执行
 - 📊 **状态管理** - 不可变状态、检查点、回滚
@@ -41,37 +40,13 @@ const provider = createLLMProvider({
 
 // 创建 Agent
 const agent = createAgent({
-    llmProvider: provider,
+    provider,
     mode: 'chat', // 或 'agent', 'auto'
 });
 
 // 发送消息
 const result = await agent.chat('你好，请帮我分析这段代码');
-console.log(result.response);
-```
-
-### 使用记忆系统
-
-```typescript
-import { createMemoryManager, SimpleTFIDFEmbedding } from 'agent-workflow-framework';
-
-// 创建记忆管理器
-const memory = createMemoryManager({
-    shortTermMaxSize: 1000,
-    autoConsolidate: true,
-}, undefined, new SimpleTFIDFEmbedding());
-
-// 记住信息
-memory.remember('用户偏好使用深色主题', {
-    tags: ['ui', 'preference'],
-    importance: 0.8,
-});
-
-// 回忆信息
-const results = await memory.recall({ tags: ['ui'] });
-
-// 语义搜索
-const relevant = await memory.longTerm.search('界面设置');
+console.log(result.content);
 ```
 
 ### 使用 LLM 服务层
@@ -131,7 +106,7 @@ registry.register({
 
 // 在 Agent 中使用
 const agent = createAgent({
-    llmProvider: provider,
+    provider,
     toolRegistry: registry,
     mode: 'agent', // 启用工具调用
 });
@@ -183,7 +158,7 @@ eventStream.on('tool_start', (event) => {
 
 // 在 Agent 中使用
 const agent = createAgent({
-    llmProvider: provider,
+    provider,
     eventStream,
 });
 ```
@@ -233,24 +208,6 @@ class Agent {
 }
 ```
 
-### MemoryManager
-
-```typescript
-interface MemoryManager {
-    // 记住信息
-    remember<T>(content: T, options?): Promise<string> | string
-    
-    // 回忆信息
-    recall<T>(query): Promise<MemoryItem<T>[]>
-    
-    // 提升到长期记忆
-    promoteToLongTerm(key: string): Promise<string | null>
-    
-    // 获取统计
-    getStats(): MemoryStats
-}
-```
-
 ### LLMService
 
 ```typescript
@@ -273,7 +230,8 @@ class LLMService {
 
 ## 📖 更多文档
 
-- [记忆系统指南](./docs/MEMORY_SYSTEM.md)
+- [Cookbook](./docs/cookbook/README.md)
+- [RBAC & Audit Logs](./docs/RBAC_AUDIT.md)
 - [核心原则](./docs/agent/CORE_PRINCIPLES.md)
 - [编码标准](./docs/agent/CODING_STANDARDS.md)
 - [常见模式](./docs/agent/COMMON_PATTERNS.md)
@@ -294,12 +252,19 @@ npm run test:coverage
 ## 🏗️ 构建
 
 ```bash
-# 构建库
-npm run build:lib
+# 构建单文件 Agent Framework Bundle
+npm run build:bundle
 
-# 构建 Demo
+# 构建 Demo（HTML + 静态资源）
+npm run build:demo
+
+# 同时构建 Bundle + Demo
 npm run build
 ```
+
+构建输出：
+- `dist/agent-framework.js`（单文件 Bundle）
+- `demo/dist/`（Demo 静态页面）
 
 ## 📊 架构
 
@@ -312,12 +277,11 @@ agent-workflow-framework/
 │   │   ├── event-stream.ts # 事件系统
 │   │   ├── llm-provider.ts # LLM 抽象层
 │   │   ├── llm-service/   # LLM 服务层
-│   │   ├── memory/        # 记忆系统
 │   │   └── ...
 │   ├── nodes/             # 工作流节点
 │   ├── providers/         # LLM Provider 实现
 │   ├── tools/             # 示例工具
-│   └── index.ts           # 主入口
+│   └── agent-framework.ts # 核心入口
 ├── tests/                 # 测试文件
 └── docs/                  # 文档
 ```

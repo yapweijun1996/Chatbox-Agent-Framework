@@ -12,6 +12,11 @@ import { DebugConsole, type DebugCounts } from './ui/debug-console';
 import { SettingsPanel } from './ui/settings-panel';
 import { HistoryView, type Conversation } from './ui/history-view';
 import { ChatViewport } from './ui/chat-viewport';
+import { MemoryPanel } from './ui/memory-panel';
+import type { MemoryPanelCallbacks } from './ui/memory-panel-types';
+import { GraphViewer } from './ui/graph-viewer';
+import type { GraphDefinition, Event as AgentEvent } from '../src/core/types';
+import { DashboardPanel } from './ui/dashboard-panel';
 
 type CallbackMap = {
     onSendMessage?: (text: string) => Promise<void>;
@@ -29,6 +34,10 @@ export class UIController {
     private sidebar: HTMLElement;
     private debugDrawer: HTMLElement;
     private debugOverlay: HTMLElement | null;
+    private dashboardDrawer: HTMLElement;
+    private dashboardOverlay: HTMLElement | null;
+    private memoryDrawer: HTMLElement;
+    private memoryOverlay: HTMLElement | null;
     private chatContainer: HTMLElement;
     private messagesList: HTMLElement;
     private userInput: HTMLTextAreaElement;
@@ -49,15 +58,22 @@ export class UIController {
     private stopBtn: HTMLButtonElement | null;
     private composerHint: HTMLElement | null;
     private debugBadge: HTMLElement | null;
+    private memoryToggleBtn: HTMLButtonElement | null;
+    private dashboardToggleBtn: HTMLButtonElement | null;
+    private moreActionsWrapper: HTMLElement | null;
+    private moreActionsBtn: HTMLButtonElement | null;
     private unreadDebugEvents = 0;
     private isPromptLibraryOpen = false;
 
     private readonly messageView: MessageView;
     private readonly sidebarManager: SidebarManager;
     private readonly debugConsole: DebugConsole;
+    private readonly memoryPanel: MemoryPanel;
     private readonly settingsPanel: SettingsPanel;
     private readonly historyView: HistoryView;
     private readonly chatViewport: ChatViewport;
+    private readonly graphViewer: GraphViewer;
+    private readonly dashboardPanel: DashboardPanel;
 
     private onSendMessage?: (text: string) => Promise<void>;
     private onNewChat?: () => void;
@@ -71,6 +87,10 @@ export class UIController {
         this.sidebar = document.getElementById('sidebar')!;
         this.debugDrawer = document.getElementById('debug-drawer')!;
         this.debugOverlay = document.getElementById('debug-overlay');
+        this.dashboardDrawer = document.getElementById('dashboard-drawer')!;
+        this.dashboardOverlay = document.getElementById('dashboard-overlay');
+        this.memoryDrawer = document.getElementById('memory-drawer')!;
+        this.memoryOverlay = document.getElementById('memory-overlay');
         this.chatContainer = document.getElementById('chat-container')!;
         this.messagesList = document.getElementById('messages-list')!;
         this.userInput = document.getElementById('user-input') as HTMLTextAreaElement;
@@ -91,8 +111,17 @@ export class UIController {
         this.stopBtn = document.getElementById('stop-btn') as HTMLButtonElement | null;
         this.composerHint = document.getElementById('composer-hint');
         this.debugBadge = document.getElementById('debug-badge');
+        this.memoryToggleBtn = document.getElementById('toggle-memory-btn') as HTMLButtonElement | null;
+        this.dashboardToggleBtn = document.getElementById('toggle-dashboard-btn') as HTMLButtonElement | null;
+        this.moreActionsWrapper = document.getElementById('top-actions-overflow');
+        this.moreActionsBtn = document.getElementById('more-actions-btn') as HTMLButtonElement | null;
         this.promptLibraryBtn?.setAttribute('aria-expanded', 'false');
+        this.memoryToggleBtn?.setAttribute('aria-expanded', 'false');
+        this.dashboardToggleBtn?.setAttribute('aria-expanded', 'false');
+        this.moreActionsBtn?.setAttribute('aria-expanded', 'false');
 
+        const graphContainer = document.getElementById('graph-viewer')!;
+        const graphEmpty = document.getElementById('graph-empty')!;
 
         this.messageView = new MessageView(this.messagesList);
         this.sidebarManager = new SidebarManager(this.sidebar, this.sidebarOverlay);
@@ -103,12 +132,14 @@ export class UIController {
         this.debugConsole = new DebugConsole({
             stepsList: this.stepsList,
             eventsContainer: this.eventsContainer,
-            filterButtons: document.querySelectorAll('.filter-tab'),
+            filterButtons: this.debugDrawer.querySelectorAll('.filter-tab'),
             searchInput: document.getElementById('debug-search-input') as HTMLInputElement,
             stepsEmpty: document.getElementById('steps-empty'),
             eventsEmpty: document.getElementById('events-empty'),
             onCountsChange: (counts) => this.handleDebugCountsChange(counts),
         });
+        this.memoryPanel = new MemoryPanel(this.memoryDrawer);
+        this.dashboardPanel = new DashboardPanel(this.dashboardDrawer);
         this.settingsPanel = new SettingsPanel(
             this.settingsModal,
             document.querySelectorAll('.provider-btn'),
@@ -122,6 +153,7 @@ export class UIController {
                 onRename: (id, title) => this.onConversationRename?.(id, title),
             }
         );
+        this.graphViewer = new GraphViewer(graphContainer, graphEmpty);
 
         this.restoreHintState();
         this.updateDebugBadge(0);
@@ -131,6 +163,10 @@ export class UIController {
 
     setCallbacks(callbacks: CallbackMap) {
         Object.assign(this, callbacks);
+    }
+
+    setMemoryCallbacks(callbacks: MemoryPanelCallbacks) {
+        this.memoryPanel.setCallbacks(callbacks);
     }
 
     // ---------------------------------------------------------------------
@@ -160,7 +196,11 @@ export class UIController {
 
         const debugSearchInput = document.getElementById('debug-search-input') as HTMLInputElement | null;
         const openDebugDrawer = () => {
+            this.setMoreActionsOpen(false);
             if (this.isDebugDrawerOpen()) return;
+            if (this.isMemoryDrawerOpen()) {
+                this.setMemoryDrawerOpen(false);
+            }
             this.setDebugDrawerOpen(true);
             this.unreadDebugEvents = 0;
             this.updateDebugBadge(0);
@@ -172,9 +212,16 @@ export class UIController {
         };
 
         const toggleDebug = () => {
+            this.setMoreActionsOpen(false);
             if (this.isDebugDrawerOpen()) {
                 this.setDebugDrawerOpen(false);
                 return;
+            }
+            if (this.isDashboardDrawerOpen()) {
+                this.setDashboardDrawerOpen(false);
+            }
+            if (this.isMemoryDrawerOpen()) {
+                this.setMemoryDrawerOpen(false);
             }
             this.setDebugDrawerOpen(true);
             this.unreadDebugEvents = 0;
@@ -183,6 +230,67 @@ export class UIController {
         document.getElementById('toggle-debug-btn')?.addEventListener('click', toggleDebug);
         document.getElementById('close-debug-btn')?.addEventListener('click', closeDebugDrawer);
         this.debugOverlay?.addEventListener('click', closeDebugDrawer);
+
+        const toggleDashboard = () => {
+            this.setMoreActionsOpen(false);
+            if (this.isDashboardDrawerOpen()) {
+                this.setDashboardDrawerOpen(false);
+                return;
+            }
+            if (this.isDebugDrawerOpen()) {
+                this.setDebugDrawerOpen(false);
+            }
+            if (this.isMemoryDrawerOpen()) {
+                this.setMemoryDrawerOpen(false);
+            }
+            this.setDashboardDrawerOpen(true);
+        };
+
+        const closeDashboardDrawer = () => {
+            if (!this.isDashboardDrawerOpen()) return;
+            this.setDashboardDrawerOpen(false);
+        };
+
+        this.dashboardToggleBtn?.addEventListener('click', toggleDashboard);
+        document.getElementById('close-dashboard-btn')?.addEventListener('click', closeDashboardDrawer);
+        this.dashboardOverlay?.addEventListener('click', closeDashboardDrawer);
+
+        const toggleMemory = () => {
+            this.setMoreActionsOpen(false);
+            if (this.isMemoryDrawerOpen()) {
+                this.setMemoryDrawerOpen(false);
+                return;
+            }
+            if (this.isDashboardDrawerOpen()) {
+                this.setDashboardDrawerOpen(false);
+            }
+            if (this.isDebugDrawerOpen()) {
+                this.setDebugDrawerOpen(false);
+            }
+            this.setMemoryDrawerOpen(true);
+            void this.memoryPanel.refresh();
+        };
+
+        const closeMemoryDrawer = () => {
+            if (!this.isMemoryDrawerOpen()) return;
+            this.setMemoryDrawerOpen(false);
+        };
+
+        this.memoryToggleBtn?.addEventListener('click', toggleMemory);
+        document.getElementById('close-memory-btn')?.addEventListener('click', closeMemoryDrawer);
+        this.memoryOverlay?.addEventListener('click', closeMemoryDrawer);
+
+        const toggleMoreActions = (event?: Event) => {
+            event?.stopPropagation();
+            this.setMoreActionsOpen(!this.isMoreActionsOpen());
+        };
+
+        this.moreActionsBtn?.addEventListener('click', toggleMoreActions);
+        document.addEventListener('click', (event) => {
+            if (!this.isMoreActionsOpen()) return;
+            if (this.moreActionsWrapper?.contains(event.target as Node)) return;
+            this.setMoreActionsOpen(false);
+        });
 
         const handleNewChat = () => {
             if (store.getState().isGenerating) return;
@@ -208,6 +316,7 @@ export class UIController {
             resizeTimeout = setTimeout(() => {
                 this.chatViewport.checkScroll();
                 this.sidebarManager.applyState();
+                this.setMoreActionsOpen(false);
             }, 150);
         });
 
@@ -239,8 +348,16 @@ export class UIController {
                     this.onStopGeneration?.();
                     return;
                 }
+                if (this.isMoreActionsOpen()) {
+                    this.setMoreActionsOpen(false);
+                    return;
+                }
                 if (this.isPromptLibraryOpen) {
                     this.togglePromptLibrary(false);
+                    return;
+                }
+                if (this.isMemoryDrawerOpen()) {
+                    this.setMemoryDrawerOpen(false);
                     return;
                 }
                 if (this.isDebugDrawerOpen()) {
@@ -338,15 +455,23 @@ export class UIController {
 
     addDebugEvent(event: any) {
         this.debugConsole.addEvent(event);
+        this.graphViewer.handleEvent(event as AgentEvent);
+        this.dashboardPanel.handleEvent(event as AgentEvent);
         if (this.debugDrawer.classList.contains('translate-x-full')) {
             this.unreadDebugEvents += 1;
             this.updateDebugBadge(this.unreadDebugEvents);
         }
     }
 
+    setGraphDefinition(graph: GraphDefinition | null) {
+        this.graphViewer.setGraph(graph);
+    }
+
     clearMessages() {
         this.messageView.clear();
         this.debugConsole.clear();
+        this.graphViewer.reset();
+        this.dashboardPanel.reset();
         this.welcomeScreen.classList.remove('hidden');
         this.userInput.value = '';
         this.togglePromptLibrary(false);
@@ -451,6 +576,17 @@ export class UIController {
         setTimeout(() => this.composerHint?.classList.remove('highlight'), 1200);
     }
 
+    private setMemoryDrawerOpen(isOpen: boolean) {
+        this.memoryDrawer.classList.toggle('translate-x-full', !isOpen);
+        this.memoryOverlay?.classList.toggle('active', isOpen);
+        this.memoryToggleBtn?.classList.toggle('active', isOpen);
+        this.memoryToggleBtn?.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    private isMemoryDrawerOpen(): boolean {
+        return !this.memoryDrawer.classList.contains('translate-x-full');
+    }
+
     private setDebugDrawerOpen(isOpen: boolean) {
         this.debugDrawer.classList.toggle('translate-x-full', !isOpen);
         this.debugOverlay?.classList.toggle('active', isOpen);
@@ -458,6 +594,27 @@ export class UIController {
 
     private isDebugDrawerOpen(): boolean {
         return !this.debugDrawer.classList.contains('translate-x-full');
+    }
+
+    private setDashboardDrawerOpen(isOpen: boolean) {
+        this.dashboardDrawer.classList.toggle('translate-x-full', !isOpen);
+        this.dashboardOverlay?.classList.toggle('active', isOpen);
+        this.dashboardToggleBtn?.classList.toggle('active', isOpen);
+        this.dashboardToggleBtn?.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    private isDashboardDrawerOpen(): boolean {
+        return !this.dashboardDrawer.classList.contains('translate-x-full');
+    }
+
+    private setMoreActionsOpen(isOpen: boolean) {
+        if (!this.moreActionsWrapper || !this.moreActionsBtn) return;
+        this.moreActionsWrapper.classList.toggle('is-open', isOpen);
+        this.moreActionsBtn.setAttribute('aria-expanded', String(isOpen));
+    }
+
+    private isMoreActionsOpen(): boolean {
+        return !!this.moreActionsWrapper?.classList.contains('is-open');
     }
 
     private updateDebugBadge(count: number) {

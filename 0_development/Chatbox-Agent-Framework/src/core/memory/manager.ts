@@ -32,7 +32,14 @@ export class MemoryManagerImpl implements MemoryManager {
         persistenceAdapter?: MemoryPersistenceAdapter,
         embeddingGenerator?: EmbeddingGenerator
     ) {
-        this.config = { ...DEFAULT_MEMORY_CONFIG, ...config };
+        this.config = {
+            ...DEFAULT_MEMORY_CONFIG,
+            ...config,
+            pruningConfig: {
+                ...DEFAULT_MEMORY_CONFIG.pruningConfig,
+                ...config.pruningConfig,
+            },
+        };
 
         // 初始化短期记忆
         this.shortTerm = new ShortTermMemoryStore({
@@ -43,7 +50,9 @@ export class MemoryManagerImpl implements MemoryManager {
         // 初始化长期记忆
         this.longTerm = new LongTermMemoryStore(
             persistenceAdapter || this.config.persistenceAdapter,
-            embeddingGenerator || this.config.embeddingGenerator
+            embeddingGenerator || this.config.embeddingGenerator,
+            this.config.summarizer,
+            this.config.pruningConfig
         );
 
         // 启动自动整理
@@ -55,7 +64,7 @@ export class MemoryManagerImpl implements MemoryManager {
     /**
      * 记住信息（自动选择短期/长期）
      */
-    remember<T>(
+    async remember<T>(
         content: T,
         options: {
             longTerm?: boolean;
@@ -64,12 +73,12 @@ export class MemoryManagerImpl implements MemoryManager {
             tags?: string[];
             source?: string;
         } = {}
-    ): Promise<string> | string {
+    ): Promise<string> {
         const importance = options.importance ?? 0.5;
 
         // 根据参数或重要性决定存储位置
         if (options.longTerm || importance >= 0.7) {
-            return this.longTerm.add(content, {
+            return await this.longTerm.add(content, {
                 importance,
                 tags: options.tags,
                 source: options.source,
@@ -92,32 +101,50 @@ export class MemoryManagerImpl implements MemoryManager {
     async recall<T>(query: string | MemoryQueryOptions): Promise<MemoryItem<T>[]> {
         const results: MemoryItem<T>[] = [];
 
-        if (typeof query === 'string') {
-            // 文本查询：从长期记忆搜索
-            const longTermResults = await this.longTerm.search<T>(query, { limit: 10 });
-            results.push(...longTermResults);
+        try {
+            if (typeof query === 'string') {
+                // 文本查询：从长期记忆搜索
+                try {
+                    const longTermResults = await this.longTerm.search<T>(query, { limit: 10 });
+                    results.push(...longTermResults);
+                } catch (err) {
+                    console.error('[MemoryManager] Long-term search failed:', err);
+                }
 
-            // 从短期记忆中查询（通过标签匹配）
-            const shortTermResults = this.shortTerm.query<T>({
-                tags: [query],
-                limit: 5,
+                // 从短期记忆中查询（通过标签匹配）
+                const shortTermResults = this.shortTerm.query<T>({
+                    tags: [query],
+                    limit: 5,
+                });
+                results.push(...shortTermResults);
+            } else {
+                // 结构化查询
+                try {
+                    const longTermResults = await this.longTerm.query<T>(query);
+                    results.push(...longTermResults);
+                } catch (err) {
+                    console.error('[MemoryManager] Long-term query failed:', err);
+                }
+
+                const shortTermResults = this.shortTerm.query<T>(query);
+                results.push(...shortTermResults);
+            }
+
+            // 按重要性和最近访问时间排序
+            // 分数 = 重要性 - (天数自上次访问) * 0.01，让最近访问的项得分更高
+            results.sort((a, b) => {
+                const daysAgoA = (Date.now() - a.metadata.lastAccessedAt) / (24 * 60 * 60 * 1000);
+                const daysAgoB = (Date.now() - b.metadata.lastAccessedAt) / (24 * 60 * 60 * 1000);
+                const scoreA = a.metadata.importance - daysAgoA * 0.01;
+                const scoreB = b.metadata.importance - daysAgoB * 0.01;
+                return scoreB - scoreA;
             });
-            results.push(...shortTermResults);
-        } else {
-            // 结构化查询
-            const longTermResults = await this.longTerm.query<T>(query);
-            const shortTermResults = this.shortTerm.query<T>(query);
-            results.push(...longTermResults, ...shortTermResults);
+
+            return results;
+        } catch (err) {
+            console.error('[MemoryManager] Recall failed:', err);
+            return results;
         }
-
-        // 按重要性和最近访问时间排序
-        results.sort((a, b) => {
-            const scoreA = a.metadata.importance + (Date.now() - a.metadata.lastAccessedAt) / (24 * 60 * 60 * 1000);
-            const scoreB = b.metadata.importance + (Date.now() - b.metadata.lastAccessedAt) / (24 * 60 * 60 * 1000);
-            return scoreB - scoreA;
-        });
-
-        return results;
     }
 
     /**
@@ -148,7 +175,7 @@ export class MemoryManagerImpl implements MemoryManager {
     /**
      * 获取统计信息
      */
-    getStats(): MemoryStats {
+    async getStats(): Promise<MemoryStats> {
         // 短期记忆统计
         const shortTermItems = this.shortTerm.getAll();
         let shortTermTotalAccesses = 0;
@@ -161,6 +188,15 @@ export class MemoryManagerImpl implements MemoryManager {
 
         const shortTermSize = shortTermItems.size;
 
+        // 长期记忆统计
+        const longTermCount = await this.longTerm.count();
+        const longTermItems = await this.longTerm.query({ limit: 1000 });
+        let longTermTotalImportance = 0;
+
+        for (const item of longTermItems) {
+            longTermTotalImportance += item.metadata.importance;
+        }
+
         return {
             shortTerm: {
                 size: shortTermSize,
@@ -168,8 +204,8 @@ export class MemoryManagerImpl implements MemoryManager {
                 averageImportance: shortTermSize > 0 ? shortTermTotalImportance / shortTermSize : 0,
             },
             longTerm: {
-                count: 0, // 需要异步查询，这里简化处理
-                averageImportance: 0,
+                count: longTermCount,
+                averageImportance: longTermCount > 0 ? longTermTotalImportance / longTermCount : 0,
             },
         };
     }

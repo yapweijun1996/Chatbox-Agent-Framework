@@ -112,4 +112,76 @@ describe('LLMPlannerNode', () => {
 
         expect(result.state.task.progress).toBe(10);
     });
+
+    it('should apply custom prompt template and examples', async () => {
+        const planner = new LLMPlannerNode(toolRegistry, {
+            provider: mockProvider,
+            promptTemplate: {
+                system: 'SYSTEM {{tools}}',
+                user: 'GOAL {{goal}}',
+            },
+            examples: [
+                { goal: '示例目标', plan: '1. 示例步骤' },
+            ],
+        });
+        const state = createState('自定义目标');
+
+        await planner.execute(state);
+
+        const firstCall = mockProvider.chat.mock.calls[0][0];
+        expect(firstCall.messages[0].content).toBe('SYSTEM 无');
+        expect(firstCall.messages[1].content).toContain('示例目标');
+        expect(firstCall.messages[2].content).toBe('1. 示例步骤');
+        expect(firstCall.messages[3].content).toBe('GOAL 自定义目标');
+    });
+
+    it('should run self-reflection when enabled', async () => {
+        mockProvider.chat
+            .mockResolvedValueOnce({
+                content: '1. 初始计划',
+                usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            })
+            .mockResolvedValueOnce({
+                content: '1. 改进计划',
+                usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+            });
+
+        const planner = new LLMPlannerNode(toolRegistry, {
+            provider: mockProvider,
+            selfReflection: { enabled: true },
+        });
+        const state = createState('Test task');
+
+        const result = await planner.execute(state);
+
+        expect(mockProvider.chat).toHaveBeenCalledTimes(2);
+        expect(result.state.task.plan).toBe('1. 改进计划');
+    });
+
+    it('should replan remaining steps when plan-and-execute is enabled', async () => {
+        mockProvider.chat.mockResolvedValue({
+            content: '1. 新的后续步骤',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        });
+
+        const planner = new LLMPlannerNode(toolRegistry, {
+            provider: mockProvider,
+            planAndExecute: { enabled: true },
+        });
+
+        const state = createState('Test task');
+        state.task.steps = [
+            { id: 'step-1', description: '已完成步骤', status: 'completed', result: 'ok' },
+            { id: 'step-2', description: '旧步骤', status: 'pending' },
+        ];
+        state.task.currentStepIndex = 1;
+        state.artifacts.toolResults = [{ toolName: 'mock-tool', output: { value: 1 } }];
+
+        const result = await planner.execute(state);
+
+        expect(result.state.task.steps).toHaveLength(2);
+        expect(result.state.task.steps[0].description).toBe('已完成步骤');
+        expect(result.state.task.steps[1].description).toBe('新的后续步骤');
+        expect(result.state.task.currentStepIndex).toBe(1);
+    });
 });

@@ -150,31 +150,76 @@
                     </div>
 
                     <div class="top-actions">
-                        <button id="stream-toggle-btn" class="pill-btn" title="Toggle Streaming" type="button">
-                            <span class="status-dot" id="stream-status-dot"></span>
-                            <span class="btn-text">Stream:</span>
-                            <span class="btn-status" id="stream-status-text">ON</span>
-                        </button>
+                        <div class="top-actions-group session-actions">
+                            <button id="stream-toggle-btn" class="pill-btn stream-toggle" title="Toggle Streaming"
+                                type="button">
+                                <span class="status-dot" id="stream-status-dot"></span>
+                                <span class="btn-text">Stream:</span>
+                                <span class="btn-status" id="stream-status-text">ON</span>
+                            </button>
+                        </div>
 
-                        <button id="settings-btn" class="icon-btn" title="Settings" type="button">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path
-                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                                </path>
-                            </svg>
-                        </button>
+                        <div class="top-actions-group system-actions">
+                            <button id="settings-btn" class="icon-btn" title="Settings" type="button">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path
+                                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
 
-                        <button id="toggle-debug-btn" class="pill-btn ghost" title="Toggle Debug Panel" type="button">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <polyline points="16 18 22 12 16 6"></polyline>
-                                <polyline points="8 6 2 12 8 18"></polyline>
-                            </svg>
-                            <span class="btn-text">Debug</span>
-                            <span id="debug-badge" class="pill-badge hidden">0</span>
-                        </button>
+                        <div id="top-actions-overflow" class="top-actions-group top-actions-overflow">
+                            <button id="more-actions-btn" class="icon-btn" title="More actions"
+                                aria-label="More actions" aria-haspopup="true" aria-controls="more-actions-menu"
+                                aria-expanded="false" type="button">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="5" cy="12" r="1.5"></circle>
+                                    <circle cx="12" cy="12" r="1.5"></circle>
+                                    <circle cx="19" cy="12" r="1.5"></circle>
+                                </svg>
+                            </button>
+                            <div id="more-actions-menu" class="top-actions-menu" role="menu">
+                                <div class="top-actions-group tool-actions">
+                                    <button id="toggle-dashboard-btn" class="pill-btn ghost" title="Toggle Dashboard"
+                                        type="button">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                                        </svg>
+                                        <span class="btn-text">Dashboard</span>
+                                    </button>
+
+                                    <button id="toggle-memory-btn" class="pill-btn ghost" title="Toggle Memory Panel"
+                                        type="button">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+                                            <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path>
+                                            <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path>
+                                        </svg>
+                                        <span class="btn-text">Memory</span>
+                                    </button>
+
+                                    <button id="toggle-debug-btn" class="pill-btn ghost" title="Toggle Debug Panel"
+                                        type="button">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <polyline points="16 18 22 12 16 6"></polyline>
+                                            <polyline points="8 6 2 12 8 18"></polyline>
+                                        </svg>
+                                        <span class="btn-text">Debug</span>
+                                        <span id="debug-badge" class="pill-badge hidden">0</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -333,6 +378,172 @@
             </div>
         </main>
 
+        <!-- Memory Drawer (Right Side) -->
+        <aside id="memory-drawer" class="memory-drawer translate-x-full" aria-busy="false">
+            <div class="memory-header">
+                <h3>Memory Vault</h3>
+                <div class="memory-actions">
+                    <button id="memory-refresh-btn" class="icon-btn" title="Refresh memory" aria-label="Refresh memory">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
+                            <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
+                        </svg>
+                    </button>
+                    <button id="close-memory-btn" class="icon-btn" aria-label="Close memory panel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="memory-search">
+                <div class="search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="memory-search-input" placeholder="Search memory...">
+                </div>
+            </div>
+            <div class="memory-filters">
+                <button class="filter-tab memory-filter active" data-scope="all">
+                    All <span class="count">0</span>
+                </button>
+                <button class="filter-tab memory-filter" data-scope="short">
+                    Short-term <span class="count">0</span>
+                </button>
+                <button class="filter-tab memory-filter" data-scope="long">
+                    Long-term <span class="count">0</span>
+                </button>
+            </div>
+            <div class="memory-actions-row">
+                <button id="memory-add-toggle" class="pill-btn ghost" type="button">Add memory</button>
+                <button id="memory-consolidate-btn" class="pill-btn" type="button">Consolidate</button>
+            </div>
+            <div id="memory-add-form" class="memory-form hidden">
+                <div class="form-row">
+                    <label for="memory-scope-select">Scope</label>
+                    <select id="memory-scope-select" class="memory-input">
+                        <option value="short">Short-term</option>
+                        <option value="long">Long-term</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label for="memory-content-input">Content</label>
+                    <textarea id="memory-content-input" class="memory-input" rows="3"
+                        placeholder="Add a memory note..."></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="memory-tags-input">Tags</label>
+                        <input id="memory-tags-input" class="memory-input" type="text" placeholder="tag1, tag2">
+                    </div>
+                    <div class="form-row">
+                        <label for="memory-importance-input">Importance</label>
+                        <div class="memory-range">
+                            <input id="memory-importance-input" type="range" min="0" max="1" step="0.05" value="0.5">
+                            <span id="memory-importance-value">50%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button id="memory-add-cancel" class="pill-btn ghost" type="button">Cancel</button>
+                    <button id="memory-add-btn" class="pill-btn" type="button">Save</button>
+                </div>
+            </div>
+            <div class="memory-content">
+                <section class="memory-section" data-scope-section="short">
+                    <div class="memory-section-header">
+                        <div class="memory-section-title">
+                            <h4>Short-term memory</h4>
+                            <span id="memory-short-count" class="memory-count">0</span>
+                        </div>
+                        <button id="memory-clear-short-btn" class="link-btn" type="button">Clear</button>
+                    </div>
+                    <div id="memory-short-empty" class="memory-empty">No short-term memory yet</div>
+                    <div id="memory-short-list" class="memory-list"></div>
+                </section>
+                <section class="memory-section" data-scope-section="long">
+                    <div class="memory-section-header">
+                        <div class="memory-section-title">
+                            <h4>Long-term memory</h4>
+                            <span id="memory-long-count" class="memory-count">0</span>
+                        </div>
+                        <button id="memory-clear-long-btn" class="link-btn" type="button">Clear</button>
+                    </div>
+                    <div id="memory-long-empty" class="memory-empty">No long-term memory yet</div>
+                    <div id="memory-long-list" class="memory-list"></div>
+                </section>
+            </div>
+        </aside>
+        <div id="memory-overlay" class="memory-overlay"></div>
+
+        <!-- Dashboard Drawer (Right Side) -->
+        <aside id="dashboard-drawer" class="dashboard-drawer translate-x-full" aria-busy="false">
+            <div class="dashboard-header">
+                <h3>Dashboard</h3>
+                <div class="dashboard-actions">
+                    <button id="close-dashboard-btn" class="icon-btn" aria-label="Close dashboard">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="dashboard-content">
+                <section class="dashboard-section">
+                    <div class="dashboard-section-header">
+                        <h4>Session Metrics</h4>
+                    </div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Total Duration</span>
+                            <span id="dashboard-duration" class="dashboard-value">0 ms</span>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Total Tokens</span>
+                            <span id="dashboard-tokens" class="dashboard-value">0</span>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Tool Calls</span>
+                            <span id="dashboard-toolcalls" class="dashboard-value">0</span>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Errors</span>
+                            <span id="dashboard-errors" class="dashboard-value">0</span>
+                        </div>
+                    </div>
+                </section>
+                <section class="dashboard-section">
+                    <div class="dashboard-section-header">
+                        <h4>Audit & Memory</h4>
+                    </div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Audit Events</span>
+                            <span id="dashboard-audit" class="dashboard-value">0</span>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Memory Saves</span>
+                            <span id="dashboard-mem-save" class="dashboard-value">0</span>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="dashboard-label">Memory Recalls</span>
+                            <span id="dashboard-mem-recall" class="dashboard-value">0</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+        <div id="dashboard-overlay" class="dashboard-overlay"></div>
+
         <!-- Debug Drawer (Right Side) -->
         <aside id="debug-drawer" class="debug-drawer translate-x-full">
             <div class="debug-header">
@@ -379,6 +590,13 @@
                 </button>
             </div>
             <div class="debug-content">
+                <div class="debug-section">
+                    <div class="debug-section-header">
+                        <h4>State Graph</h4>
+                    </div>
+                    <div id="graph-empty" class="debug-empty">Graph will appear here</div>
+                    <div id="graph-viewer" class="graph-viewer hidden"></div>
+                </div>
                 <div class="debug-section">
                     <div class="debug-section-header">
                         <h4>Execution Steps</h4>
