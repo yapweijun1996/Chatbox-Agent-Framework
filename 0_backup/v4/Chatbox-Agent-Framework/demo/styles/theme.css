@@ -1,0 +1,35 @@
+@theme {
+    --color-bg-app: #0a0f16;
+    --color-bg-sidebar: rgba(16, 20, 30, 0.88);
+    --color-bg-drawer: rgba(12, 16, 24, 0.92);
+    --color-bg-topbar: rgba(17, 21, 31, 0.92);
+    --color-bg-user-msg: #1b2433;
+    --color-bg-ai-msg: #131a26;
+    --color-bg-input: rgba(16, 20, 30, 0.8);
+    --color-border-color: rgba(148, 163, 184, 0.18);
+    --color-border-strong: rgba(148, 163, 184, 0.32);
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #d5dbe5;
+    --color-text-tertiary: #9aa3b2;
+    --color-accent: #2dd4bf;
+    --color-accent-soft: #5eead4;
+    --color-accent-hover: #20c4ad;
+    --color-accent-glow: rgba(45, 212, 191, 0.35);
+    --color-accent-cool: #38bdf8;
+    --color-accent-cool-glow: rgba(56, 189, 248, 0.25);
+    --color-accent-warm: #f59e0b;
+    --color-accent-warm-glow: rgba(245, 158, 11, 0.28);
+    --color-status-success: #22c55e;
+    --color-status-warning: #f59e0b;
+    --color-status-error: #ef4444;
+    --color-status-info: #38bdf8;
+
+    --width-sidebar: 280px;
+    --width-drawer: 340px;
+    --height-header: 64px;
+
+    --font-family-sans: "Outfit", "Space Grotesk", "Avenir Next", "Helvetica Neue", sans-serif;
+    --font-family-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", ui-monospace, monospace;
+    --font-weight-body: 420;
+    --font-weight-heading: 650;
+}

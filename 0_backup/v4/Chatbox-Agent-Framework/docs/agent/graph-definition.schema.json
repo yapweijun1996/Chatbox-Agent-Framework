@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatbox-agent-framework/schema/graph-definition.json",
+  "title": "GraphDefinitionConfig",
+  "type": "object",
+  "required": ["nodes", "edges", "entryNode", "maxSteps"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "type": { "const": "sequential" },
+              "from": { "type": "string" },
+              "to": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["from", "to", "condition"],
+            "properties": {
+              "type": { "const": "conditional" },
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "condition": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["from", "to", "join", "type"],
+            "properties": {
+              "type": { "const": "parallel" },
+              "from": { "type": "string" },
+              "to": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+              "join": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "entryNode": { "type": "string" },
+    "maxSteps": { "type": "number", "minimum": 1 },
+    "conditionErrorStrategy": {
+      "type": "string",
+      "enum": ["false", "throw"]
+    },
+    "parallelMerge": {
+      "type": "object",
+      "properties": {
+        "order": { "type": "string", "enum": ["defined", "sorted"] },
+        "conflict": { "type": "string", "enum": ["last-write-wins"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
